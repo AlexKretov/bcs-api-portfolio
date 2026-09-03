@@ -46,11 +46,7 @@ from .client import (
     load_config,
     mask_secret,
 )
-<<<<<<< ours
-from .pnl import calculate_pnl
-=======
 from .pnl import calculate_pnl, signed_operation_sum
->>>>>>> theirs
 from .demo import (
     fake_limits_payload,
     fake_operations,
