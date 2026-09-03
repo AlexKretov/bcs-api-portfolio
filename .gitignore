@@ -3,6 +3,7 @@
 bcs-config.json
 *.bcs-tokens.json
 reports/
+api_tokens.txt
 
 __pycache__/
 *.py[cod]
