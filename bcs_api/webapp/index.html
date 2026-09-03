@@ -1,0 +1,1178 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>БКС Портфель — веб-интерфейс</title>
+<style>
+:root{
+  --bg:#0b0f14; --panel:#131a22; --panel2:#0f151c; --border:#22303e; --border2:#2e4152;
+  --text:#dfe7ee; --muted:#8b98a5; --accent:#4ba3ff; --accent2:#2f7fd6; --green:#3ecf8e;
+  --red:#ff6b6b; --orange:#f5b04c; --violet:#a78bfa; --radius:12px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;}
+h1,h2,h3{font-weight:600;margin:0}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--border2);background:var(--panel2);color:var(--text);padding:7px 12px;transition:background .15s,border-color .15s,transform .05s}
+button:hover{background:#1b2530;border-color:#3d5468}
+button:active{transform:translateY(1px)}
+button.primary{background:var(--accent2);border-color:var(--accent2);color:#fff}
+button.primary:hover{background:var(--accent);border-color:var(--accent)}
+button.small{padding:3px 8px;font-size:12px}
+button:disabled{opacity:.5;cursor:default}
+input,select{font:inherit;background:var(--panel2);color:var(--text);border:1px solid var(--border2);border-radius:8px;padding:6px 9px;width:100%;outline:none}
+input:focus,select:focus{border-color:var(--accent)}
+input[type=checkbox]{width:auto;margin-right:6px}
+label{display:block;font-size:12px;color:var(--muted);margin:8px 0 3px}
+label b{color:var(--text);font-weight:500}
+a{color:var(--accent)}
+
+/* ---------- layout ---------- */
+.topbar{display:flex;align-items:center;gap:14px;padding:12px 20px;border-bottom:1px solid var(--border);background:var(--panel2);position:sticky;top:0;z-index:20;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:700;letter-spacing:.2px}
+.logo{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--violet));display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff}
+.mode-badge{padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid}
+.mode-badge.demo{color:#ffd479;border-color:#7a5c1e;background:#2c2410}
+.mode-badge.live{color:#7ee2b0;border-color:#1e7a52;background:#0f2c21}
+.conn{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.dot{width:9px;height:9px;border-radius:50%;background:#666;display:inline-block}
+.dot.ok{background:var(--green);box-shadow:0 0 8px var(--green)}
+.dot.warn{background:var(--orange)}
+.dot.err{background:var(--red)}
+.top-actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.layout{display:grid;grid-template-columns:320px 1fr;gap:16px;padding:16px 20px;max-width:1560px;margin:0 auto;align-items:start}
+@media(max-width:980px){.layout{grid-template-columns:1fr}.sidebar{order:2}.content{order:1}}
+.sidebar{display:flex;flex-direction:column;gap:14px}
+.content{min-width:0;display:flex;flex-direction:column;gap:14px}
+
+/* ---------- panels ---------- */
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:14px}
+.panel>h2{font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:10px}
+.panel .actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.hint{font-size:11.5px;color:var(--muted);margin-top:10px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mode-switch{display:flex;gap:8px;margin-bottom:4px}
+.mode-switch label{display:flex;align-items:center;gap:7px;margin:0;padding:8px 10px;border:1px solid var(--border2);border-radius:8px;cursor:pointer;flex:1;color:var(--text)}
+.mode-switch input{width:auto;margin:0}
+.mode-switch label.active{border-color:var(--accent);background:#122536}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px}
+.chip{border:1px solid var(--border2);background:var(--panel2);border-radius:999px;padding:4px 11px;font-size:12.5px}
+.chip.active{background:var(--accent2);border-color:var(--accent2);color:#fff}
+.big{display:flex;align-items:center;gap:10px;width:100%;justify-content:flex-start;font-size:14px;padding:11px 13px;margin-bottom:8px}
+.big .ico{font-size:18px;width:24px;text-align:center}
+.big:hover{border-color:var(--accent)}
+
+/* ---------- cards / content ---------- */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px;overflow:hidden}
+.card>header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.card>header h2{font-size:16px}
+.card .card-actions{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.card details{margin:8px 0 14px;border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--panel2)}
+.card summary{cursor:pointer;font-weight:600;color:#c7d3df;user-select:none;list-style:none}
+.card summary::before{content:"▸ ";color:var(--accent)}
+.card details[open] summary::before{content:"▾ "}
+.card details .inside{padding-top:10px}
+.foot{color:var(--muted);font-size:12px;margin-top:4px}
+.note{background:#101f30;border:1px solid #22456b;color:#9ec9f2;border-radius:8px;padding:8px 11px;font-size:12.5px;margin:8px 0}
+.demo-banner{background:linear-gradient(90deg,#2c2410,#101f30);border:1px solid #5c4a1e;color:#ffd479;border-radius:10px;padding:10px 14px;font-size:13px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.demo-banner button{margin-left:auto}
+
+/* ---------- KPIs ---------- */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:8px}
+.kpi{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+.kpi .k-label{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.kpi .k-value{font-size:18px;font-weight:700;margin-top:3px;font-variant-numeric:tabular-nums}
+.kpi.total{background:linear-gradient(135deg,#0f2337,#122c49);border-color:#274b74}
+.kpi .positive{color:var(--green)}
+.kpi .negative{color:var(--red)}
+
+/* ---------- bars ---------- */
+.bars{display:flex;flex-direction:column;gap:7px}
+.bar-row{display:grid;grid-template-columns:150px 1fr 110px;gap:10px;align-items:center;font-size:12.5px}
+.bar-track{background:#0c1117;border-radius:6px;height:14px;overflow:hidden;border:1px solid var(--border)}
+.bar-fill{height:100%;border-radius:6px}
+.bar-val{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+
+/* ---------- tables ---------- */
+.tbl-wrap{overflow-x:auto}
+table.data{border-collapse:collapse;width:100%;font-size:12.8px}
+table.data th{position:sticky;top:0;background:#182230;color:var(--muted);font-weight:600;text-align:left;padding:7px 9px;border-bottom:1px solid var(--border2);white-space:nowrap;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px}
+table.data td{padding:6px 9px;border-bottom:1px solid #1a2531;white-space:nowrap;font-variant-numeric:tabular-nums}
+table.data tr:hover td{background:#182330}
+table.data .num{text-align:right}
+table.data .pos{color:var(--green)}
+table.data .neg{color:var(--red)}
+table.data .side-buy{color:var(--green);font-weight:600}
+table.data .side-sell{color:var(--red);font-weight:600}
+table.data .muted{color:var(--muted)}
+table.data .locked{color:var(--orange);font-weight:600}
+.empty{padding:16px;text-align:center;color:var(--muted)}
+
+/* ---------- stats chips ---------- */
+.stats{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px}
+.stat{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:6px 11px;font-size:12.5px;color:var(--muted)}
+.stat b{color:var(--text);font-variant-numeric:tabular-nums;font-weight:600}
+
+/* ---------- errors / toasts / overlay ---------- */
+.error-card{background:#2a1418;border:1px solid #7c2f3c;border-radius:10px;padding:12px 14px;color:#ffb4b4}
+.error-card h3{color:#ff8a8a;font-size:14px;margin-bottom:6px}
+.error-card pre{white-space:pre-wrap;font-size:12px;color:#d99;margin:8px 0 0;background:#180c10;padding:10px;border-radius:8px}
+#toasts{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:60}
+.toast{background:#182230;border:1px solid var(--border2);color:var(--text);border-radius:10px;padding:10px 14px;font-size:13px;max-width:360px;box-shadow:0 8px 24px rgba(0,0,0,.45);animation:slide .2s ease}
+.toast.ok{border-color:#1e7a52}
+.toast.err{border-color:#7c2f3c;color:#ffb4b4}
+@keyframes slide{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
+#overlay{position:fixed;inset:0;background:rgba(5,8,12,.72);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:50;backdrop-filter:blur(2px)}
+.spinner{width:42px;height:42px;border:4px solid #22303e;border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#overlay-text{color:#cfe0f0;font-size:14px}
+
+/* ---------- log & modal ---------- */
+#log-details{margin-top:4px}
+#log{display:flex;flex-direction:column;gap:3px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11.5px;color:var(--muted);max-height:260px;overflow:auto}
+#log .row{display:grid;grid-template-columns:64px 44px 100px 1fr 70px;gap:8px;padding:2px 4px;border-bottom:1px solid #16202b}
+#log .err{color:var(--red)}
+dialog{border:1px solid var(--border2);border-radius:12px;background:var(--panel);color:var(--text);width:min(1000px,92vw);max-height:86vh;padding:0}
+dialog::backdrop{background:rgba(4,7,10,.78)}
+dialog .d-head{display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border)}
+dialog .d-head h3{font-size:14px}
+dialog .d-close{margin-left:auto}
+dialog pre{white-space:pre-wrap;word-break:break-word;font-size:12px;padding:14px;overflow:auto;max-height:70vh;margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.spark svg{width:100%;height:84px;display:block}
+.spark .legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-top:6px;flex-wrap:wrap}
+.spark .legend b{color:var(--text)}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand"><span class="logo">₽</span> БКС Портфель <span style="color:var(--muted);font-weight:400;font-size:13px">веб-интерфейс</span></div>
+  <span id="mode-badge" class="mode-badge demo">демо-режим</span>
+  <div class="conn"><span id="conn-dot" class="dot warn"></span><span id="conn-text">подключение не проверялось</span></div>
+  <div class="top-actions">
+    <button id="btn-refresh-all">⟳ Обновить всё</button>
+    <button id="btn-clear">Очистить</button>
+  </div>
+</header>
+
+<main class="layout">
+  <!-- ============================ SIDEBAR ============================ -->
+  <aside class="sidebar">
+
+    <section class="panel">
+      <h2>Подключение</h2>
+      <div class="mode-switch" id="mode-switch">
+        <label data-mode="demo"><input type="radio" name="mode" value="demo" checked> 🧪 Демо-данные</label>
+        <label data-mode="live"><input type="radio" name="mode" value="live"> 🔌 Боевой API</label>
+      </div>
+      <div id="live-fields" style="display:none">
+        <label>Refresh-токен <input type="password" id="in-token" placeholder="вставьте токен из «Токены API»" autocomplete="off"></label>
+        <div class="row2">
+          <label>client_id <select id="in-client-id"><option value="trade-api-read">trade-api-read</option><option value="trade-api-write">trade-api-write</option></select></label>
+          <label>База API <input id="in-base-url" placeholder="https://be.broker.ru"></label>
+        </div>
+        <details>
+          <summary style="cursor:pointer;font-size:12px;color:var(--muted)">Дополнительно</summary>
+          <div class="row2">
+            <label>Таймаут, с <input id="in-timeout" placeholder="30" inputmode="decimal"></label>
+            <label>Повторы <input id="in-retries" placeholder="4" inputmode="numeric"></label>
+          </div>
+          <div class="row2">
+            <label>RPS <input id="in-rps" placeholder="10" inputmode="decimal"></label>
+            <label>Кэш токенов <input id="in-cache" placeholder=".bcs-tokens.json"></label>
+          </div>
+          <label>Папка экспорта <input id="in-export-dir" placeholder="reports"></label>
+        </details>
+      </div>
+      <div class="actions">
+        <button class="primary" id="btn-save-settings">💾 Сохранить настройки</button>
+        <button id="btn-check-token">🛡 Проверить токен</button>
+        <button id="btn-status">📡 Статус соединения</button>
+        <button id="btn-reset-cache">🗑 Сбросить кэш</button>
+        <button id="btn-refresh-token">♻ Перевыпустить access</button>
+      </div>
+      <p class="hint" id="token-hint">Токен из формы хранится только в памяти сервера и не показывается повторно. Режим «демо» работает без сети и токена.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Период и фильтры</h2>
+      <div class="chips" id="period-chips">
+        <button class="chip" data-days="7">7 дн.</button>
+        <button class="chip active" data-days="30">30 дн.</button>
+        <button class="chip" data-days="90">90 дн.</button>
+        <button class="chip" data-days="365">365 дн.</button>
+        <button class="chip" data-days="0">весь период</button>
+      </div>
+      <div class="row2">
+        <label>С даты <input type="date" id="in-since" title="перекрывает кнопки периода"></label>
+        <label>По дату <input type="date" id="in-until"></label>
+      </div>
+      <label>Тикеры (через запятую) <input id="in-tickers" placeholder="SBER, LKOH"></label>
+      <label>Классы (через запятую) <input id="in-class-codes" placeholder="TQBR"></label>
+      <div class="row2">
+        <label>Сторона <select id="in-side"><option value="">все</option><option value="buy">покупки</option><option value="sell">продажи</option></select></label>
+        <label>term (режим расчётов) <select id="in-term"><option value="T0">T0</option><option value="T1">T1</option><option value="T2">T2</option><option value="all">all</option></select></label>
+      </div>
+      <div class="row2">
+        <label>Записей на страницу <input type="number" id="in-size" value="100" min="1" max="100"></label>
+        <label style="margin-top:26px"><input type="checkbox" id="in-all-pages"> Все страницы</label>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Данные</h2>
+      <button class="big" id="btn-portfolio"><span class="ico">📊</span> Портфель</button>
+      <button class="big" id="btn-limits"><span class="ico">🏦</span> Лимиты</button>
+      <button class="big" id="btn-trades"><span class="ico">🔁</span> Сделки</button>
+      <button class="big" id="btn-orders"><span class="ico">📋</span> Заявки</button>
+      <button class="big" id="btn-operations"><span class="ico">💸</span> Операции</button>
+      <button class="big" id="btn-report" style="border-color:var(--accent2)"><span class="ico">🧾</span> Полный отчёт</button>
+    </section>
+
+    <section class="panel">
+      <h2>Мониторинг портфеля</h2>
+      <div class="row2">
+        <label>Интервал, с <input type="number" id="in-watch-interval" value="30" min="2"></label>
+        <label style="margin-top:26px">
+          <button id="btn-watch-start" style="width:100%">▶ Следить</button>
+        </label>
+      </div>
+      <button id="btn-watch-stop" style="width:100%;margin-top:8px" disabled>⏹ Остановить</button>
+      <p class="hint" id="watch-info">Обновления портфеля каждые N секунд; на графике — стоимость портфеля.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Экспорт</h2>
+      <label>Период — как выше (кнопки/даты)</label>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px">
+        <label style="display:flex;align-items:center;margin:0"><input type="checkbox" id="exp-json" checked> JSON</label>
+        <label style="display:flex;align-items:center;margin:0"><input type="checkbox" id="exp-csv" checked> CSV</label>
+        <label style="display:flex;align-items:center;margin:0"><input type="checkbox" id="exp-md" checked> Markdown</label>
+      </div>
+      <label style="margin-top:8px"><input type="checkbox" id="exp-orders"> Добавить заявки</label>
+      <label><input type="checkbox" id="exp-operations"> Добавить операции</label>
+      <div class="actions">
+        <button class="primary" id="btn-export">📤 Экспортировать отчёт</button>
+      </div>
+      <div id="export-list"></div>
+    </section>
+
+  </aside>
+
+  <!-- ============================ CONTENT ============================ -->
+  <section class="content">
+    <div id="demo-banner" class="demo-banner" style="display:none">
+      <span>🧪 Сейчас открыт <b>демо-режим</b>: данные синтетические, всё управление — кнопками. Для реального счёта вставьте refresh-токен и переключитесь на «Боевой API».</span>
+      <button id="btn-goto-live">Перейти к настройке</button>
+    </div>
+
+    <div id="status-bar" class="note" style="display:none"></div>
+    <div id="results"></div>
+
+    <details id="log-details">
+      <summary style="cursor:pointer;color:var(--muted);font-size:12.5px">Журнал запросов</summary>
+      <div id="log"></div>
+    </details>
+  </section>
+</main>
+
+<div id="overlay" style="display:none"><div class="spinner"></div><div id="overlay-text">Загрузка…</div></div>
+<div id="toasts"></div>
+
+<dialog id="raw-dialog">
+  <div class="d-head"><h3 id="raw-title">Сырой JSON</h3><button class="d-close" id="raw-close">✕</button></div>
+  <pre id="raw-pre"></pre>
+</dialog>
+
+<script>
+"use strict";
+const $ = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+const esc = (v) => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+const APP = {
+  settings: null,
+  mode: "demo",
+  period: 30,
+  results: {},
+  watchTimer: null,
+  watchHistory: [],
+  watchCount: 0,
+  log: [],
+  palette: ["#4ba3ff","#a78bfa","#3ecf8e","#f5b04c","#ff6b6b","#5ec8d8","#e879f9","#9ee37d","#f0a0d0","#7dd3fc"],
+  sectionTitles: {portfolio:"Портфель", limits:"Лимиты", trades:"Сделки", orders:"Заявки", operations:"Операции", token:"Диагностика токена", export:"Экспорт"}
+};
+
+/* =============================== UTILS =============================== */
+
+function fmtMoney(v, cur) {
+  if (v == null) return "—";
+  const sign = v < 0 ? "-" : "";
+  const a = Math.abs(v);
+  const s = a.toLocaleString("ru-RU", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  const int = s.split(",")[0];
+  const frac = s.indexOf(",") >= 0 ? s.slice(s.indexOf(",")) : "";
+  return sign + int.replace(/\s/g," ") + (cur ? " " + cur : "");
+}
+function fmtMoneyPlain(v) { return fmtMoney(v, "₽"); }
+function fmtMoneySigned(v) { return (v > 0 ? "+" : "") + fmtMoney(v, "₽"); }
+function fmtQty(v) {
+  if (v == null) return "—";
+  const n = Number(v);
+  return n.toLocaleString("ru-RU", {maximumFractionDigits: 6}).replace(/\u00a0/g, " ");
+}
+function fmtPct(v) {
+  if (v == null) return "—";
+  const s = v.toLocaleString("ru-RU", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  return (v > 0 ? "+" : "") + s.replace(/\u00a0/g, " ") + "%";
+}
+function signClass(v) { return v == null || v === 0 ? "" : (v > 0 ? "pos" : "neg"); }
+function escV(v) { return esc(v == null ? "—" : v); }
+
+function toast(msg, kind) {
+  const el = document.createElement("div");
+  el.className = "toast " + (kind || "ok");
+  el.textContent = msg;
+  $("#toasts").appendChild(el);
+  setTimeout(() => { el.style.opacity = "0"; el.style.transition = "opacity .3s"; setTimeout(() => el.remove(), 350); }, 4200);
+}
+
+function showOverlay(text) { $("#overlay-text").textContent = text || "Загрузка…"; $("#overlay").style.display = "flex"; }
+function hideOverlay() { $("#overlay").style.display = "none"; }
+
+function logEntry(path, ms, ok, error) {
+  APP.log.unshift({time: new Date().toLocaleTimeString("ru-RU"), path, ms, ok, error});
+  if (APP.log.length > 200) APP.log.pop();
+  renderLog();
+}
+function renderLog() {
+  const box = $("#log");
+  box.innerHTML = "";
+  APP.log.forEach(e => {
+    const row = document.createElement("div");
+    row.className = "row" + (e.ok ? "" : " err");
+    row.innerHTML =
+      '<span>' + esc(e.time) + '</span>' +
+      '<span>POST</span>' +
+      '<span>' + esc(e.path) + '</span>' +
+      '<span>' + (e.error ? esc(e.error) : "ok") + '</span>' +
+      '<span>' + e.ms + ' мс</span>';
+    box.appendChild(row);
+  });
+}
+
+async function api(path, body) {
+  const t0 = performance.now();
+  let resp, data = null;
+  try {
+    resp = await fetch(path, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body || {})});
+  } catch (e) {
+    logEntry(path, 0, false, "сеть: " + e.message);
+    throw {kind:"network", message:"Сервер недоступен: " + e.message};
+  }
+  try { data = await resp.json(); } catch (e) {
+    data = {ok:false, error:{kind:"http", message:"Сервер вернул не JSON (HTTP " + resp.status + ")"}};
+  }
+  const ms = Math.round(performance.now() - t0);
+  logEntry(path, ms, !!data.ok && resp.ok, data.ok ? null : (data.error && data.error.message));
+  return data;
+}
+function fail(data) {
+  const e = (data && data.error) || {};
+  return {kind: e.kind || "error", message: e.message || "Неизвестная ошибка", hint: e.hint, trace_id: e.trace_id, data};
+}
+
+/* ============================ DOM helpers ============================ */
+
+function ensureSection(key) {
+  let sec = $("#sec-" + key);
+  if (sec) return sec;
+  sec = document.createElement("section");
+  sec.className = "card";
+  sec.id = "sec-" + key;
+  sec.innerHTML = '<header><h2>' + esc(APP.sectionTitles[key] || key) + '</h2><div class="card-actions"></div></header><div class="body"></div>';
+  $("#results").appendChild(sec);
+  return sec;
+}
+function sectionActions(key, buttons) {
+  const box = ensureSection(key).querySelector(".card-actions");
+  box.innerHTML = "";
+  buttons.forEach(b => {
+    const btn = document.createElement("button");
+    btn.className = "small";
+    btn.textContent = b.label;
+    btn.onclick = b.fn;
+    box.appendChild(btn);
+  });
+}
+function sectionBody(key) { return ensureSection(key).querySelector(".body"); }
+function showEmpty(key, text) {
+  const body = sectionBody(key);
+  body.innerHTML = '<div class="empty">' + esc(text) + "</div>";
+}
+function showError(key, data) {
+  const e = fail(data);
+  const sec = ensureSection(key);
+  const body = sec.querySelector(".body");
+  let hintHtml = "";
+  if (e.hint) hintHtml = '<p style="color:#ffb4b4;margin:6px 0 0;font-size:12.5px">💡 ' + esc(e.hint) + "</p>";
+  body.innerHTML =
+    '<div class="error-card"><h3>⚠ ' + esc(e.message) + "</h3>" + hintHtml +
+    (e.trace_id ? '<p style="margin:4px 0 0;font-size:12px">traceId: ' + esc(e.trace_id) + "</p>" : "") +
+    '<pre>' + esc(JSON.stringify(data, null, 2)) + "</pre></div>";
+  toast(e.message, "err");
+  return e;
+}
+
+function table(cols, rows, aligns) {
+  const wrap = document.createElement("div");
+  wrap.className = "tbl-wrap";
+  const t = document.createElement("table");
+  t.className = "data";
+  const thead = document.createElement("thead");
+  const trh = document.createElement("tr");
+  cols.forEach((c, i) => {
+    const th = document.createElement("th");
+    th.textContent = c;
+    if (aligns && aligns[i] === "num") th.className = "num";
+    trh.appendChild(th);
+  });
+  thead.appendChild(trh);
+  t.appendChild(thead);
+  const tbody = document.createElement("tbody");
+  rows.forEach(r => {
+    const tr = document.createElement("tr");
+    r.forEach((cell, i) => {
+      const td = document.createElement("td");
+      if (cell && typeof cell === "object") {
+        if (cell.html !== undefined) td.innerHTML = cell.html;
+        else td.textContent = cell.text != null ? cell.text : "";
+        if (cell.cls) td.className = cell.cls;
+      } else {
+        td.textContent = cell == null ? "—" : String(cell);
+      }
+      if (aligns && aligns[i] === "num") td.className += " num";
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  t.appendChild(tbody);
+  wrap.appendChild(t);
+  return wrap;
+}
+function detailsHtml(title, open, inner) {
+  return '<details' + (open ? " open" : "") + '><summary>' + esc(title) + '</summary><div class="inside">' + inner + "</div></details>";
+}
+
+function setStatus(data, extra) {
+  const bar = $("#status-bar");
+  const parts = [];
+  if (data && data.as_of) parts.push("данные на " + esc(data.as_of));
+  if (data && data.mode) parts.push("источник: " + (data.mode === "demo" ? "демо-данные" : "боевой API"));
+  if (extra) parts.push(extra);
+  if (!parts.length) { bar.style.display = "none"; return; }
+  bar.style.display = "block";
+  bar.innerHTML = "🕒 " + parts.join(" · ");
+}
+
+function updateBadges(mode, connText, connClass) {
+  const b = $("#mode-badge");
+  b.className = "mode-badge " + mode;
+  b.textContent = mode === "demo" ? "демо-режим" : "боевой API";
+  const d = $("#conn-dot"), t = $("#conn-text");
+  d.className = "dot " + (connClass || "warn");
+  t.textContent = connText || "подключение не проверялось";
+  App_showDemoBanner(mode === "demo");
+}
+let _bannerShown = false;
+function App_showDemoBanner(show) {
+  // показываем баннер один раз, пользователь может закрыть его вручную
+  if (show && !_bannerShown) { $("#demo-banner").style.display = "flex"; }
+  else if (!show) { $("#demo-banner").style.display = "none"; }
+}
+function updateModeFields(mode) {
+  $("#live-fields").style.display = mode === "live" ? "block" : "none";
+  $$("#mode-switch label").forEach(l => l.classList.toggle("active", l.dataset.mode === mode));
+}
+function updateTokenHint() {
+  const set = APP.settings && APP.settings.token_set;
+  $("#token-hint").textContent = set
+    ? "Токен уже хранится в памяти сервера (на диск не пишется). Чтобы сменить его — вставьте новое значение и нажмите «Сохранить настройки»."
+    : "Токен из формы хранится только в памяти сервера. Режим «демо» работает без сети и токена. Источником также могут быть BCS_REFRESH_TOKEN или bcs-config.json.";
+}
+
+/* =============================== FILTERS =============================== */
+
+function filterBody(extra) {
+  const days = $("#in-since").value ? 0 : APP.period;
+  const out = Object.assign({
+    days: days || null,
+    since: $("#in-since").value || null,
+    until: $("#in-until").value || null,
+    tickers: $("#in-tickers").value || null,
+    class_codes: $("#in-class-codes").value || null,
+    side: $("#in-side").value || null,
+    size: Math.min(100, Math.max(1, parseInt($("#in-size").value, 10) || 100)),
+    all_pages: $("#in-all-pages").checked,
+    term: $("#in-term").value
+  }, extra || {});
+  return out;
+}
+function bindPeriodChips() {
+  $$("#period-chips .chip").forEach(ch => ch.onclick = () => {
+    $$("#period-chips .chip").forEach(c => c.classList.remove("active"));
+    ch.classList.add("active");
+    APP.period = parseInt(ch.dataset.days, 10) || 0;
+  });
+}
+
+/* =============================== SETTINGS =============================== */
+
+function collectSettings() {
+  return {
+    mode: ($('input[name="mode"]:checked') || {}).value || "demo",
+    refresh_token: $("#in-token").value,
+    client_id: $("#in-client-id").value,
+    base_url: $("#in-base-url").value,
+    timeout: $("#in-timeout").value,
+    max_retries: $("#in-retries").value,
+    rps: $("#in-rps").value,
+    cache_path: $("#in-cache").value,
+    export_dir: $("#in-export-dir").value
+  };
+}
+function fillSettings(s) {
+  APP.settings = s; APP.mode = s.mode;
+  updateModeFields(s.mode);
+  $("#in-client-id").value = s.client_id || "trade-api-read";
+  $("#in-base-url").value = s.base_url || "";
+  $("#in-timeout").value = s.timeout || "";
+  $("#in-retries").value = s.max_retries || "";
+  $("#in-rps").value = s.rps || "";
+  $("#in-cache").value = s.cache_path || "";
+  $("#in-export-dir").value = s.export_dir || "reports";
+  $("#in-token").value = "";
+  updateTokenHint();
+}
+async function loadSettings() {
+  const resp = await fetch("/api/settings");
+  const data = await resp.json();
+  if (data.ok) fillSettings(data.settings);
+}
+
+/* =============================== STATUS =============================== */
+
+async function doStatus(check) {
+  const data = await api("/api/status", {check: !!check});
+  if (data.ok) {
+    if (data.demo) {
+      updateBadges("demo", "демо-данные · сеть не используется", "warn");
+    } else {
+      const token = data.token ? (data.token.present ? "токен задан" : "токен не задан") : "";
+      if (check && data.access && data.access.obtained) {
+        updateBadges("live", "соединение OK · access до " + data.access.ttl_h + " ч", "ok");
+        toast("Соединение установлено: access-токен получен (до " + data.access.ttl_h + " ч)");
+      } else if (check && !data.ok && data.error) {
+        updateBadges("live", "ошибка авторизации", "err");
+        toast(data.error.message, "err");
+      } else {
+        updateBadges("live", (data.client ? "база " + data.client.base_url.replace(/^https?:\/\//, "") : token) + (token ? " · " + token : " · настройте токен"), data.token && data.token.present ? "ok" : "warn");
+      }
+    }
+    return data;
+  }
+  updateBadges(APP.mode, "ошибка статуса", "err");
+  return data;
+}
+
+/* =============================== PORTFOLIO =============================== */
+
+async function doPortfolio(opts) {
+  opts = opts || {};
+  const data = await api("/api/portfolio", filterBody({include_names: true, top: 0}));
+  if (!data.ok) { showError("portfolio", data); return null; }
+  APP.results.portfolio = data;
+  renderPortfolio(data, opts);
+  setStatus(data, "запрос выполнен");
+  return data;
+}
+
+function renderPortfolio(data, opts) {
+  const body = sectionBody("portfolio");
+  const s = data.summary;
+  const kpi = (label, value, cls, big) =>
+    '<div class="kpi' + (big ? " total" : "") + '"><div class="k-label">' + esc(label) + '</div><div class="k-value ' + (cls || "") + '">' + value + "</div></div>";
+  const kpis =
+    '<div class="kpis">' +
+    kpi("Стоимость бумаг", fmtMoneyPlain(s.securities_value_rub)) +
+    kpi("Денежный остаток", fmtMoneyPlain(s.cash_rub)) +
+    kpi("Итого портфель", fmtMoneyPlain(s.total_value_rub), "", true) +
+    kpi("Нереализ. P/L", fmtMoneySigned(s.unrealized_pl), signClass(s.unrealized_pl)) +
+    kpi("За день", fmtMoneySigned(s.daily_pl), signClass(s.daily_pl)) +
+    "</div>";
+
+  let bars = "";
+  if (data.by_type && data.by_type.length) {
+    bars = detailsHtml("Разбивка по классам активов", true,
+      '<div class="bars">' + data.by_type.map((b, i) =>
+        '<div class="bar-row"><span>' + esc(b.name) + '</span><div class="bar-track"><div class="bar-fill" style="width:' +
+        Math.max(2, Math.min(100, b.share)) + '%;background:' + APP.palette[i % APP.palette.length] + '"></div></div>' +
+        '<div class="bar-val">' + fmtMoneyPlain(b.value) + ' · ' + fmtPct(b.share) + "</div></div>").join("") + "</div>");
+  }
+
+  let cash = "";
+  if (data.cash && data.cash.length) {
+    const rows = data.cash.map(c => [
+      {text: c.currency},
+      {text: fmtQty(c.quantity)},
+      {text: fmtQty(c.locked)},
+      {text: fmtQty(c.available)},
+      {text: fmtMoney(c.value_rub)}
+    ]);
+    const t = table(["Валюта","Всего","Занято","Свободно","В ₽"], rows, ["","num","num","num","num"]);
+    cash = detailsHtml("Денежные остатки (" + data.cash.length + ")", true, t.outerHTML);
+  }
+
+  let positions = "";
+  if (data.positions && data.positions.length) {
+    const rows = data.positions.map(p => [
+      {html: esc(p.ticker) + (p.is_blocked ? ' <span class="locked" title="актив заблокирован">🔒</span>' : "")},
+      {text: p.name, cls: "muted"},
+      {text: fmtQty(p.quantity)},
+      {text: fmtMoney(p.balance_price, "")},
+      {text: fmtMoney(p.current_price, "")},
+      {text: fmtMoneyPlain(p.current_value_rub)},
+      {text: fmtMoneySigned(p.unrealized_pl), cls: signClass(p.unrealized_pl)},
+      {text: fmtPct(p.unrealized_percent_pl), cls: signClass(p.unrealized_percent_pl)},
+      {text: fmtPct(p.daily_percent_pl), cls: signClass(p.daily_percent_pl)},
+      {text: fmtPct(p.portfolio_share)},
+      {text: p.type}
+    ]);
+    const t = table(["Тикер","Название","Кол-во","Цена поз.","Цена тек.","Стоимость ₽","P/L","P/L %","За день %","Доля","Тип"],
+      rows, ["","","num","num","num","num","num","num","num","num",""]);
+    positions = detailsHtml("Позиции (" + data.positions.length + ")", true, t.outerHTML);
+  } else {
+    positions = detailsHtml("Позиции", true, '<div class="empty">Позиций нет (или все остатки нулевые)</div>');
+  }
+
+  let chart = "";
+  if (opts.watch) {
+    APP.watchHistory.push({t: new Date().toLocaleTimeString("ru-RU"), value: s.total_value_rub});
+    if (APP.watchHistory.length > 90) APP.watchHistory.shift();
+    chart = watchChartHtml(APP.watchHistory);
+  }
+
+  body.innerHTML = kpis + bars + cash + positions + chart + '<p class="foot">' +
+    (data.as_of ? "данные на " + esc(data.as_of) + " · " : "режим: ") +
+    (data.mode === "demo" ? "демо-данные" : "боевой API") + " · " + (data.note || "") + "</p>";
+
+  sectionActions("portfolio", [
+    {label:"JSON", fn: () => dlJson("portfolio", data)},
+    {label:"CSV", fn: () => dlCsvPortfolio(data)},
+    {label:"Markdown", fn: () => dlMdPortfolio(data)},
+    {label:"Сырой JSON", fn: () => openRaw("portfolio", filterBody())}
+  ]);
+  ensureSection("portfolio").scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+function watchChartHtml(history) {
+  if (!history.length) return "";
+  const values = history.map(h => h.value);
+  const min = Math.min.apply(null, values), max = Math.max.apply(null, values);
+  const w = 640, h = 84, pad = 8;
+  const span = (max - min) || 1;
+  const pts = values.map((v, i) => {
+    const x = pad + i * (w - 2 * pad) / Math.max(1, values.length - 1);
+    const y = h - pad - ((v - min) / span) * (h - 2 * pad);
+    return x.toFixed(1) + "," + y.toFixed(1);
+  }).join(" ");
+  const last = values[values.length - 1];
+  return '<div class="spark"><svg viewBox="0 0 ' + w + " " + h + '" preserveAspectRatio="none">' +
+    '<polyline points="' + pts + '" fill="none" stroke="' + (last >= (values[0] || 0) ? "#3ecf8e" : "#ff6b6b") + '" stroke-width="2"/></svg>' +
+    '<div class="legend"><span>стоимость портфеля: <b>' + fmtMoneyPlain(last) + "</b></span>" +
+    "<span>мин: <b>" + fmtMoneyPlain(min) + "</b></span><span>макс: <b>" + fmtMoneyPlain(max) + "</b></span>" +
+    "<span>замеров: <b>" + history.length + "</b></span></div></div>";
+}
+
+/* =============================== LIMITS =============================== */
+
+async function doLimits() {
+  const data = await api("/api/limits", {});
+  if (!data.ok) { showError("limits", data); return null; }
+  APP.results.limits = data;
+  renderLimits(data);
+  return data;
+}
+function renderLimits(data) {
+  const body = sectionBody("limits");
+  let html = "";
+  if (data.money && data.money.length) {
+    const rows = data.money.map(m => [
+      {text: m.currency}, {text: exchangeLabel(m.exchange)}, {text: fmtMoney(m.total, "")},
+      {text: fmtMoney(m.locked, "")}, {text: fmtMoney(m.free, "")}, {text: m.updated || "—"}
+    ]);
+    html += detailsHtml("Деньги по валютам (" + data.money.length + ")", true,
+      table(["Валюта","Биржа","Всего","Занято","Свободно","Обновлено"], rows, ["","","num","num","num",""]).outerHTML);
+  }
+  if (data.securities && data.securities.length) {
+    const rows = data.securities.map(d => [
+      {text: d.ticker}, {text: d.class_code}, {text: fmtQty(d.quantity)}, {text: fmtQty(d.lots)},
+      {text: fmtMoney(d.average_price, "")}, {text: d.type}, {text: d.instrument_type}
+    ]);
+    html += detailsHtml("Ценные бумаги (" + data.securities.length + ")", true,
+      table(["Тикер","Класс","Шт.","Лоты","Средн. цена","T","Тип"], rows, ["","","num","num","num","",""]).outerHTML);
+  }
+  if (data.futures && data.futures.length) {
+    const rows = data.futures.map(f => [
+      {text: f.currency}, {text: fmtMoney(f.cbp_limit, "")}, {text: fmtMoney(f.cbpl_used, "")},
+      {text: fmtMoney(f.cbpl_planned, "")}, {text: fmtMoneySigned(f.var_margin), cls: signClass(f.var_margin)},
+      {text: fmtMoneySigned(f.real_var_margin), cls: signClass(f.real_var_margin)}
+    ]);
+    html += detailsHtml("Срочный рынок (ГО и вариационная маржа) (" + data.futures.length + ")", false,
+      table(["Валюта","ЛГО","ГО после клиринга","ГО план","Вар. маржа (оценка)","Вар. маржа (начисл.)"], rows, ["","num","num","num","num","num"]).outerHTML);
+  }
+  if (data.holdings && data.holdings.length) {
+    const rows = data.holdings.map(h => [
+      {text: h.ticker}, {text: fmtQty(h.position)}, {text: fmtMoney(h.average_price, "")},
+      {text: fmtMoneyPlain(h.value)}, {text: fmtMoneySigned(h.var_margin), cls: signClass(h.var_margin)}
+    ]);
+    html += detailsHtml("Позиции по фьючерсам (" + data.holdings.length + ")", false,
+      table(["Тикер","Позиция","Средн. цена","Стоимость","Вар. маржа"], rows, ["","num","num","num","num"]).outerHTML);
+  }
+  if (!html) html = '<div class="empty">Лимиты: ответов нет (возможно, по счёту ещё нет данных)</div>';
+  body.innerHTML = html + '<p class="foot">' + (data.as_of ? "данные на " + esc(data.as_of) + " · " : "") +
+    (data.mode === "demo" ? "демо-данные" : "боевой API") + "</p>";
+  sectionActions("limits", [
+    {label:"JSON", fn: () => dlJson("limits", data)},
+    {label:"Сырой JSON", fn: () => openRaw("limits", {})}
+  ]);
+  ensureSection("limits").scrollIntoView({behavior:"smooth", block:"start"});
+}
+function exchangeLabel(ex) { return ex || "—"; }
+
+/* =============================== TRADES =============================== */
+
+async function doTrades() {
+  const data = await api("/api/trades", filterBody());
+  if (!data.ok) { showError("trades", data); return null; }
+  APP.results.trades = data;
+  renderTrades(data);
+  return data;
+}
+function renderTrades(data) {
+  const body = sectionBody("trades");
+  const st = data.stats;
+  let statsHtml = '<div class="stats">' +
+    '<span>сделок: <b>' + data.total + '</b></span>' +
+    '<span>покупок: <b>' + st.buys + '</b></span>' +
+    '<span>продаж: <b>' + st.sells + '</b></span>' +
+    (st.volume != null ? '<span>объём: <b>' + fmtMoneyPlain(st.volume) + "</b></span>" : "") +
+    '<span>валют: <b>' + (st.currencies.join(", ") || "—") + "</b></span>" +
+    (st.first ? '<span>период: <b>' + st.first + " → " + st.last + "</b></span>" : "") +
+    "</div>";
+  let html = statsHtml;
+  if (data.note) html += '<div class="note">' + esc(data.note) + "</div>";
+  if (data.trades && data.trades.length) {
+    const rows = data.trades.map(t => [
+      {text: t.date},
+      {text: t.ticker},
+      {text: t.class_code},
+      {text: t.side_label, cls: "side-" + (t.side === "1" ? "buy" : "sell")},
+      {text: fmtQty(t.quantity)},
+      {text: fmtMoney(t.price, "")},
+      {text: fmtMoneyPlain(t.volume)},
+      {text: t.currency},
+      {text: t.trade_num != null ? String(t.trade_num) : "—", cls: "muted"}
+    ]);
+    html += table(["Дата","Тикер","Класс","Сторона","Кол-во","Цена","Объём","Валюта","№ сделки"],
+      rows, ["","","","","num","num","num","",""]).outerHTML;
+  } else {
+    html += '<div class="empty">Сделок нет в выбранном периоде. Помните: API отдаёт сделки только с 26.01.2026.</div>';
+  }
+  body.innerHTML = html + '<p class="foot">' + (data.mode === "demo" ? "демо-данные" : "боевой API") + "</p>";
+  sectionActions("trades", [
+    {label:"JSON", fn: () => dlJson("trades", data)},
+    {label:"CSV", fn: () => dlCsvTrades(data)},
+    {label:"Сырой JSON", fn: () => openRaw("trades", filterBody())}
+  ]);
+  ensureSection("trades").scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+/* =============================== ORDERS =============================== */
+
+async function doOrders() {
+  const data = await api("/api/orders", filterBody());
+  if (!data.ok) { showError("orders", data); return null; }
+  APP.results.orders = data;
+  renderOrders(data);
+  return data;
+}
+function renderOrders(data) {
+  const body = sectionBody("orders");
+  const rows = (data.orders || []).map(o => [
+    {text: o.date},
+    {text: o.ticker},
+    {text: o.class_code},
+    {text: o.side_label, cls: "side-" + (o.side_label === "покупка" ? "buy" : "sell")},
+    {text: o.type_label},
+    {text: fmtMoney(o.price, "")},
+    {text: fmtQty(o.order_quantity)},
+    {text: fmtQty(o.executed_quantity)},
+    {text: fmtQty(o.remained_quantity)},
+    {text: fmtMoney(o.average_price, "")},
+    {text: o.status_label}
+  ]);
+  body.innerHTML = '<div class="stats"><span>заявок: <b>' + data.total + "</b></span></div>" +
+    (rows.length
+      ? table(["Подана","Тикер","Класс","Сторона","Тип","Цена","Кол-во","Исполнено","Остаток","Средн.","Статус"],
+          rows, ["","","","","","num","num","num","num","num",""]).outerHTML
+      : '<div class="empty">Заявок нет в выбранном периоде</div>') +
+    '<p class="foot">' + (data.mode === "demo" ? "демо-данные" : "боевой API") + "</p>";
+  sectionActions("orders", [
+    {label:"JSON", fn: () => dlJson("orders", data)},
+    {label:"CSV", fn: () => dlCsvGeneric(data.orders || [], "order")},
+    {label:"Сырой JSON", fn: () => openRaw("orders", filterBody())}
+  ]);
+  ensureSection("orders").scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+/* ============================ OPERATIONS ============================ */
+
+async function doOperations() {
+  const data = await api("/api/operations", filterBody());
+  if (!data.ok) { showError("operations", data); return null; }
+  APP.results.operations = data;
+  renderOperations(data);
+  return data;
+}
+function renderOperations(data) {
+  const body = sectionBody("operations");
+  const rows = (data.operations || []).map(o => [
+    {text: o.date},
+    {text: o.type, cls: "muted"},
+    {text: o.status, cls: o.status === "Approved" ? "pos" : "muted"},
+    {text: o.ticker},
+    {text: o.isin},
+    {text: o.issuer},
+    {text: fmtMoneySigned(o.sum), cls: signClass(o.sum)},
+    {text: o.currency},
+    {text: o.balance_change === "Positive" ? "＋ приход" : "－ расход", cls: signClass(o.balance_change === "Positive" ? 1 : -1)}
+  ]);
+  body.innerHTML = '<div class="stats"><span>операций: <b>' + data.total + "</b></span></div>" +
+    (rows.length
+      ? table(["Дата","Тип","Статус","Тикер","ISIN","Инструмент","Сумма","Валюта","Изменение"],
+          rows, ["","","","","","","num","",""]).outerHTML
+      : '<div class="empty">Неторговых операций в выбранном периоде нет</div>') +
+    '<p class="foot">' + (data.mode === "demo" ? "демо-данные" : "боевой API") + "</p>";
+  sectionActions("operations", [
+    {label:"JSON", fn: () => dlJson("operations", data)},
+    {label:"CSV", fn: () => dlCsvGeneric(data.operations || [], "operation")},
+    {label:"Сырой JSON", fn: () => openRaw("operations", filterBody())}
+  ]);
+  ensureSection("operations").scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+/* ============================ TOKEN CHECK ============================ */
+
+async function doTokenCheck() {
+  const data = await api("/api/token/check", {});
+  if (!data.ok) { showError("token", data); return null; }
+  APP.results.token = data;
+  renderTokenCheck(data);
+  return data;
+}
+function renderTokenCheck(data) {
+  const body = sectionBody("token");
+  if (data.demo) {
+    body.innerHTML = '<div class="note">' + esc(data.note) + "</div>";
+    return;
+  }
+  let html = "";
+  if (data.overridden) html += '<div class="note">⚠ Значение из переменной окружения перебивает bcs-config.json — правка файла ничего не меняет. Сброс: unset BCS_REFRESH_TOKEN</div>';
+  html += '<div class="kpis">' +
+    '<div class="kpi"><div class="k-label">Токен (маска)</div><div class="k-value">' + escV(data.configured.masked) + "</div></div>" +
+    '<div class="kpi"><div class="k-label">Длина</div><div class="k-value">' + data.configured.length + " симв.</div></div>" +
+    '<div class="kpi"><div class="k-label">Источник</div><div class="k-value" style="font-size:14px">' + esc((data.sources && data.sources.refresh_token) || "—") + "</div></div>" +
+    '<div class="kpi"><div class="k-label">Кэш</div><div class="k-value" style="font-size:14px">' + (data.cache_file_exists ? "файл есть" : "нет файла") + (data.cache_path ? " · " + esc(data.cache_path) : "") + "</div></div>" +
+    "</div>";
+
+  (data.reports || []).forEach(r => {
+    const problems = (r.problems || []).map(p => '<div style="color:var(--red);font-size:12.5px">! ' + esc(p) + "</div>").join("");
+    const notes = (r.notes || []).map(n => '<div style="color:var(--muted);font-size:12.5px">· ' + esc(n) + "</div>").join("");
+    html += detailsHtml("Осмотр значения из «" + esc(r.source) + "» — " + (r.ok ? "OK" : "есть проблемы"), r.ok,
+      '<div class="kpis">' +
+      '<div class="kpi"><div class="k-label">Форма</div><div class="k-value" style="font-size:14px">' + (r.looks_like_jwt ? "JWT (3 части)" : "непрозрачная строка") + "</div></div>" +
+      '<div class="kpi"><div class="k-label">Выдан (iat)</div><div class="k-value" style="font-size:14px">' + escV(r.issued_at) + "</div></div>" +
+      '<div class="kpi"><div class="k-label">Действителен до</div><div class="k-value" style="font-size:14px">' + escV(r.expired_at) + "</div></div>" +
+      '<div class="kpi"><div class="k-label">client_id (azp)</div><div class="k-value" style="font-size:14px">' + escV(r.azp) + "</div></div>" +
+      "</div>" + (problems ? '<div style="margin-top:8px">' + problems + "</div>" : "") + (notes ? '<div style="margin-top:6px">' + notes + "</div>" : ""));
+  });
+
+  const scan = (data.config_scan || []).map(f =>
+    '<div style="font-size:12.5px;padding:4px 0;border-bottom:1px solid #1a2531"><b>' + esc(f.name) + "</b> — " +
+    (f.is_expected_name ? "ожидаемое имя" : "НЕ читается: имя не то") +
+    (f.has_refresh_token ? " · токен: " + esc(f.refresh_masked || "—") : " · refresh_token нет") +
+    (f.error ? ' <span style="color:var(--red)">· ' + esc(f.error) + "</span>" : "") + "</div>").join("");
+  if (scan) html += detailsHtml("Файлы-кандидаты конфигурации", false, scan);
+  body.innerHTML = html + '<p class="foot">Секреты не показываются: только длина, маска и claims.</p>';
+  ensureSection("token").scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+/* =============================== EXPORT =============================== */
+
+async function doExport() {
+  const formats = [];
+  if ($("#exp-json").checked) formats.push("json");
+  if ($("#exp-csv").checked) formats.push("csv");
+  if ($("#exp-md").checked) formats.push("md");
+  if (!formats.length) { toast("Выберите хотя бы один формат", "err"); return; }
+  const body = filterBody({
+    formats: formats.join(","),
+    include_orders: $("#exp-orders").checked,
+    include_operations: $("#exp-operations").checked
+  });
+  const data = await api("/api/export", body);
+  if (!data.ok) { showError("export", data); return null; }
+  APP.results.export = data;
+  renderExport(data);
+  return data;
+}
+function renderExport(data) {
+  const body = sectionBody("export");
+  if (!data.files || !data.files.length) {
+    body.innerHTML = '<div class="empty">Файлы не созданы — возможно, ответы API пустые</div>';
+    return;
+  }
+  const list = data.files.map(f =>
+    '<div style="display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid #1a2531">' +
+    '<span style="color:var(--muted);font-size:12px">' + esc(f.format.toUpperCase()) + "</span>" +
+    '<a href="' + esc(f.url) + '" download style="flex:1">' + esc(f.name) + "</a>" +
+    '<span style="color:var(--muted);font-size:12px">' + Math.round(f.size / 1024) + " КБ</span></div>").join("");
+  body.innerHTML = '<div class="stats"><span>позиций: <b>' + data.summary.positions + "</b></span>" +
+    '<span>сделок: <b>' + data.summary.trades + "</b></span><span>файлов: <b>" + data.summary.files + "</b></span></div>" +
+    list + '<p class="foot">' + (data.mode === "demo" ? "демо-данные" : "боевой API") + " · сохранено на сервере в папке экспорта</p>";
+  ensureSection("export").scrollIntoView({behavior:"smooth", block:"start"});
+  toast("Экспорт готов: " + data.summary.files + " файл(ов)");
+}
+
+/* =============================== DOWNLOADS =============================== */
+
+function downloadFile(name, content, mime) {
+  const blob = new Blob([content], {type: mime || "application/octet-stream"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+function stamp() {
+  const d = new Date(), p = n => String(n).padStart(2, "0");
+  return d.getFullYear() + p(d.getMonth()+1) + p(d.getDate()) + "-" + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
+}
+function dlJson(key, data) {
+  const payload = key === "portfolio"
+    ? {as_of: data.as_of, summary: data.summary, cash: data.cash, positions: data.positions, by_type: data.by_type}
+    : key === "trades" ? {total: data.total, stats: data.stats, trades: data.trades}
+    : key === "limits" ? {as_of: data.as_of, money: data.money, securities: data.securities, futures: data.futures, holdings: data.holdings}
+    : key === "orders" ? {total: data.total, orders: data.orders}
+    : key === "operations" ? {total: data.total, operations: data.operations} : data;
+  downloadFile("bcs-"+key+"-"+stamp()+".json", JSON.stringify(payload, null, 2), "application/json");
+}
+function csvEscape(v) {
+  const s = v == null ? "" : String(v);
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+function blobCsv(headers, rows) {
+  const lines = [headers.map(csvEscape).join(",")].concat(rows.map(r => r.map(csvEscape).join(",")));
+  return "\uFEFF" + lines.join("\n");
+}
+function dlCsvPortfolio(data) {
+  const rows = [];
+  (data.cash || []).forEach(c => rows.push([c.currency, c.quantity, c.locked, c.available, c.value_rub]));
+  (data.positions || []).forEach(p => {
+    rows.push([p.ticker, p.name, p.quantity, p.balance_price, p.current_price, p.current_value_rub,
+      p.unrealized_pl, p.unrealized_percent_pl, p.daily_percent_pl, p.portfolio_share, p.type]);
+  });
+  downloadFile("bcs-portfolio-"+stamp()+".csv",
+    blobCsv(["Валюта/Тикер","Название","Кол-во","Цена поз.","Цена тек.","Стоимость ₽","P/L ₽","P/L %","За день %","Доля %","Тип"], rows), "text/csv;charset=utf-8");
+}
+function dlCsvTrades(data) {
+  const rows = (data.trades || []).map(t => [t.date, t.ticker, t.class_code, t.side_label, t.quantity, t.price, t.volume, t.currency, t.order_num, t.trade_num]);
+  downloadFile("bcs-trades-"+stamp()+".csv",
+    blobCsv(["Дата","Тикер","Класс","Сторона","Кол-во","Цена","Объём","Валюта","№ заявки","№ сделки"], rows), "text/csv;charset=utf-8");
+}
+function dlCsvGeneric(items, kind) {
+  const headers = kind === "order"
+    ? ["Дата","Исполнена","Тикер","Класс","Сторона","Тип","Цена","Кол-во","Исполнено","Остаток","Средн.","Статус"]
+    : ["Дата","Тип","Статус","Тикер","ISIN","Инструмент","Сумма","Валюта","Изменение"];
+  const rows = items.map(o => kind === "order"
+    ? [o.date, o.execution_date, o.ticker, o.class_code, o.side_label, o.type_label, o.price, o.order_quantity, o.executed_quantity, o.remained_quantity, o.average_price, o.status_label]
+    : [o.date, o.type, o.status, o.ticker, o.isin, o.issuer, o.sum, o.currency, o.balance_change]);
+  downloadFile("bcs-"+kind+"s-"+stamp()+".csv", blobCsv(headers, rows), "text/csv;charset=utf-8");
+}
+function mdTable(headers, rows) {
+  const line = "| " + headers.join(" | ") + " |";
+  const sep = "| " + headers.map(() => "---").join(" | ") + " |";
+  const body = rows.map(r => "| " + r.map(v => String(v == null ? "" : v).replace(/\|/g, "\\|")).join(" | ") + " |");
+  return [line, sep].concat(body).join("\n");
+}
+function dlMdPortfolio(data) {
+  let md = "# Портфель БКС\n\n- Итого: " + fmtMoneyPlain(data.summary.total_value_rub) +
+    "\n- Стоимость бумаг: " + fmtMoneyPlain(data.summary.securities_value_rub) +
+    "\n- Деньги: " + fmtMoneyPlain(data.summary.cash_rub) +
+    "\n- Нереализованный P/L: " + fmtMoneySigned(data.summary.unrealized_pl) +
+    "\n- За день: " + fmtMoneySigned(data.summary.daily_pl) + "\n";
+  if (data.positions && data.positions.length) {
+    md += "\n## Позиции\n\n" + mdTable(["Тикер","Название","Кол-во","Цена поз.","Цена тек.","Стоимость ₽","P/L","P/L %","Доля"],
+      data.positions.map(p => [p.ticker, p.name, p.quantity, p.balance_price, p.current_price, p.current_value_rub, p.unrealized_pl, p.unrealized_percent_pl, p.portfolio_share])) + "\n";
+  }
+  downloadFile("bcs-portfolio-"+stamp()+".md", md, "text/markdown;charset=utf-8");
+}
+
+/* =============================== RAW VIEWER =============================== */
+
+async function openRaw(section, filter) {
+  showOverlay("Загружаю сырой JSON…");
+  try {
+    const data = await api("/api/raw", Object.assign({section}, filter || {}));
+    if (!data.ok) { const e = showError(section, data); return; }
+    $("#raw-title").textContent = "Сырой ответ API: " + section + " (" + data.mode + ")";
+    $("#raw-pre").textContent = JSON.stringify(data.raw, null, 2);
+    $("#raw-dialog").showModal();
+  } finally { hideOverlay(); }
+}
+
+/* =============================== WATCH =============================== */
+
+function startWatch() {
+  if (APP.watchTimer) stopWatch();
+  const sec = Math.max(2, parseInt($("#in-watch-interval").value, 10) || 30);
+  APP.watchHistory = [];
+  APP.watchCount = 0;
+  $("#btn-watch-start").disabled = true;
+  $("#btn-watch-stop").disabled = false;
+  $("#watch-info").textContent = "Слежу за портфелем каждые " + sec + " с…";
+  const tick = async () => {
+    APP.watchCount++;
+    await doPortfolio({watch: true});
+  };
+  tick();
+  APP.watchTimer = setInterval(tick, sec * 1000);
+  toast("Мониторинг запущен: каждые " + sec + " с");
+}
+function stopWatch() {
+  if (APP.watchTimer) { clearInterval(APP.watchTimer); APP.watchTimer = null; }
+  $("#btn-watch-start").disabled = false;
+  $("#btn-watch-stop").disabled = true;
+  if (APP.watchCount) {
+    $("#watch-info").textContent = "Остановлено. Замеров: " + APP.watchCount + " · история показана на графике портфеля.";
+    toast("Мониторинг остановлен");
+  } else {
+    $("#watch-info").textContent = "Мониторинг не запущен.";
+  }
+}
+
+/* =============================== FULL REPORT =============================== */
+
+async function doFullReport() {
+  showOverlay("Собираю полный отчёт…");
+  hideSectionCards();
+  try {
+    await doPortfolio();
+    await doLimits();
+    await doTrades();
+    toast("Полный отчёт собран");
+  } finally { hideOverlay(); }
+}
+function hideSectionCards() {
+  Object.keys(APP.sectionTitles).forEach(k => { const s = $("#sec-" + k); if (s) s.remove(); });
+}
+
+/* =============================== INIT & BIND =============================== */
+
+function init() {
+  bindPeriodChips();
+  bindControls();
+  loadSettings().then(() => {
+    doStatus(false);
+  });
+}
+function bindControls() {
+  $$('input[name="mode"]').forEach(r => r.onchange = () => updateModeFields(r.value));
+
+  $("#btn-save-settings").onclick = async () => {
+    showOverlay("Сохраняю настройки…");
+    try {
+      const data = await api("/api/settings", {action: "set", values: collectSettings()});
+      if (!data.ok) { toast(fail(data).message, "err"); return; }
+      fillSettings(data.settings);
+      (data.notes || []).forEach(n => toast(n));
+      toast("Настройки сохранены · режим: " + (data.settings.mode === "demo" ? "демо" : "боевой API"));
+      await doStatus(false);
+    } finally { hideOverlay(); }
+  };
+  $("#btn-check-token").onclick = async () => {
+    showOverlay("Проверяю токен…");
+    try { await doTokenCheck(); } finally { hideOverlay(); }
+  };
+  $("#btn-status").onclick = async () => {
+    showOverlay("Проверяю соединение…");
+    try { await doStatus(true); } finally { hideOverlay(); }
+  };
+  $("#btn-reset-cache").onclick = async () => {
+    const data = await api("/api/token/reset", {});
+    if (data.ok) toast(data.message + (data.cache_path ? " (" + data.cache_path + ")" : ""));
+    else toast(fail(data).message, "err");
+  };
+  $("#btn-refresh-token").onclick = async () => {
+    showOverlay("Перевыпускаю токен…");
+    try {
+      const data = await api("/api/token/refresh", {});
+      if (data.ok) toast(data.message + " · действует до " + data.ttl_h + " ч");
+      else toast(fail(data).message, "err");
+    } finally { hideOverlay(); }
+  };
+
+  $("#btn-portfolio").onclick = () => runGuard("Портфель", doPortfolio);
+  $("#btn-limits").onclick = () => runGuard("Лимиты", doLimits);
+  $("#btn-trades").onclick = () => runGuard("Сделки", doTrades);
+  $("#btn-orders").onclick = () => runGuard("Заявки", doOrders);
+  $("#btn-operations").onclick = () => runGuard("Операции", doOperations);
+  $("#btn-report").onclick = doFullReport;
+  $("#btn-export").onclick = () => runGuard("Экспорт", doExport);
+
+  $("#btn-watch-start").onclick = startWatch;
+  $("#btn-watch-stop").onclick = stopWatch;
+
+  $("#btn-clear").onclick = () => {
+    $("#results").innerHTML = "";
+    APP.results = {};
+    APP.watchHistory = [];
+    toast("Результаты очищены");
+  };
+  $("#btn-refresh-all").onclick = async () => {
+    await doStatus(false);
+    if (APP.mode === "demo") { await doFullReport(); return; }
+    if (APP.results.trades || APP.results.portfolio || APP.results.limits) await doFullReport();
+    else await doFullReport();
+  };
+  $("#btn-goto-live").onclick = () => {
+    $("#demo-banner").style.display = "none";
+    _bannerShown = true;
+    const live = $('input[name="mode"][value="live"]');
+    if (live) { live.checked = true; updateModeFields("live"); }
+    document.querySelector(".sidebar").scrollIntoView({behavior: "smooth"});
+  };
+  $("#raw-close").onclick = () => $("#raw-dialog").close();
+  $("#raw-dialog").onclick = (e) => { if (e.target === $("#raw-dialog")) e.target.close(); };
+}
+async function runGuard(label, fn) {
+  showOverlay(label + "…");
+  try { await fn(); } catch (e) { toast((e && e.message) || "ошибка", "err"); } finally { hideOverlay(); }
+}
+
+document.addEventListener("DOMContentLoaded", init);
+</script>
+</body>
+</html>

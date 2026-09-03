@@ -164,6 +164,20 @@ def build_parser() -> argparse.ArgumentParser:
     p_watch.add_argument("--term", default="T0")
     p_watch.set_defaults(func=cmd_watch)
 
+    p_web = sub.add_parser(
+        "web", help="веб-интерфейс: портфель/лимиты/сделки/заявки/операции кнопками в браузере"
+    )
+    p_web.add_argument("--host", default="127.0.0.1", help="адрес прослушивания")
+    p_web.add_argument("--port", type=int, default=8080, help="порт")
+    p_web.add_argument(
+        "--mode",
+        choices=("auto", "demo", "live"),
+        default="auto",
+        help="demo — синтетические данные; auto — по наличию токена",
+    )
+    p_web.add_argument("--no-browser", action="store_true", help="не открывать браузер автоматически")
+    p_web.set_defaults(func=cmd_web)
+
     p_demo = sub.add_parser("demo", help="показать вывод программы на фикстурах, без сети и токена")
     p_demo.add_argument("--days", type=int, default=45, help="за какой период сгенерировать фейковые сделки")
     p_demo.set_defaults(func=cmd_demo)
@@ -797,6 +811,14 @@ def cmd_watch(args: argparse.Namespace) -> int:
     except KeyboardInterrupt:
         print("\nостановлено пользователем")
     return EXIT_OK
+
+
+def cmd_web(args: argparse.Namespace) -> int:
+    """Веб-интерфейс: всё управление кнопками в браузере."""
+    from .web import serve_web
+
+    mode = None if args.mode == "auto" else args.mode
+    return serve_web(host=args.host, port=args.port, mode=mode, open_browser=not args.no_browser)
 
 
 def cmd_demo(args: argparse.Namespace) -> int:
