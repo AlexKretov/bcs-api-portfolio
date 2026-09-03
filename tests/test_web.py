@@ -122,6 +122,13 @@ class WebDemoTests(unittest.TestCase):
             self.assertTrue(operations["ok"])
             self.assertGreater(operations["total"], 0)
 
+            pnl = client.post("/api/pnl", {"days": 30})
+            self.assertTrue(pnl["ok"])
+            self.assertEqual(pnl["mode"], "demo")
+            self.assertIn("summary", pnl)
+            self.assertIn("net_pnl", pnl["summary"])
+            self.assertIn("potential_capital_gain", pnl["summary"])
+
     def test_demo_raw_sections(self) -> None:
         with _WebServerCtx() as client:
             for section in ("portfolio", "limits", "trades", "orders", "operations"):
@@ -202,6 +209,11 @@ class WebLiveTests(unittest.TestCase):
                     orders = web.post("/api/orders", {"days": 30})
                     self.assertTrue(orders["ok"])
                     self.assertEqual(orders["total"], 1)
+
+                    pnl = web.post("/api/pnl", {"days": 30})
+                    self.assertTrue(pnl["ok"])
+                    self.assertEqual(pnl["mode"], "live")
+                    self.assertIn("net_pnl", pnl["summary"])
 
                     check = web.post("/api/token/check", {})
                     self.assertTrue(check["ok"])

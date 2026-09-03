@@ -198,6 +198,40 @@ class CashBalance:
         )
 
 
+def deduplicate_cash(cash_list: list[CashBalance]) -> list[CashBalance]:
+    """Удаление дубликатов денежных средств по валюте с агрегацией свободных остатков."""
+    seen: dict[str, CashBalance] = {}
+    for c in cash_list:
+        key = (c.currency or c.ticker or "").strip().upper()
+        if not key:
+            continue
+        if key not in seen:
+            seen[key] = CashBalance(
+                currency=key,
+                ticker=c.ticker or key,
+                exchange=c.exchange,
+                account=c.account,
+                term=c.term,
+                quantity=c.quantity,
+                locked=c.locked,
+                current_value_rub=c.current_value_rub,
+                raw=c.raw,
+            )
+        else:
+            existing = seen[key]
+            if (
+                existing.quantity == c.quantity
+                and existing.locked == c.locked
+                and existing.current_value_rub == c.current_value_rub
+            ):
+                pass  # Точный дубликат записи
+            else:
+                existing.quantity += c.quantity
+                existing.locked += c.locked
+                existing.current_value_rub += c.current_value_rub
+    return list(seen.values())
+
+
 @dataclass
 class Portfolio:
     """Снимок портфеля: деньги + позиции + сводные итоги."""
@@ -236,6 +270,34 @@ class Portfolio:
             out[key] = out.get(key, 0.0) + pos.current_value_rub
         return dict(sorted(out.items(), key=lambda kv: -kv[1]))
 
+    def positions_by_type(self) -> list[dict[str, Any]]:
+        """Группировка активов по классам с расчётом итогов по каждому классу."""
+        grouped: dict[str, list[Position]] = {}
+        for pos in sorted(self.positions, key=lambda p: -p.current_value_rub):
+            label = pos.type_label
+            grouped.setdefault(label, []).append(pos)
+
+        total_value = self.securities_value_rub or 1.0
+        out = []
+        for label, pos_list in grouped.items():
+            value_rub = sum(p.current_value_rub for p in pos_list)
+            unrealized_pl = sum(p.unrealized_pl for p in pos_list)
+            daily_pl = sum(p.daily_pl for p in pos_list)
+            share = value_rub / total_value * 100
+            out.append(
+                {
+                    "class": label,
+                    "value_rub": round(value_rub, 2),
+                    "unrealized_pl": round(unrealized_pl, 2),
+                    "daily_pl": round(daily_pl, 2),
+                    "share": round(share, 2),
+                    "count": len(pos_list),
+                    "positions": pos_list,
+                }
+            )
+        out.sort(key=lambda g: -g["value_rub"])
+        return out
+
     def top_positions(self, n: int = 10) -> list[Position]:
         return sorted(self.positions, key=lambda p: -p.current_value_rub)[:n]
 
@@ -265,6 +327,8 @@ class Portfolio:
             if stamp and (as_of is None or stamp > as_of):
                 as_of = stamp
             if item.get("type") == "moneyLimit":
+                if term and item.get("term") and item.get("term") != term:
+                    continue
                 cash.append(CashBalance.from_api(item))
                 continue
             if term and item.get("term") and item.get("term") != term:
@@ -275,7 +339,7 @@ class Portfolio:
             positions.append(position)
         return cls(
             positions=positions,
-            cash=cash,
+            cash=deduplicate_cash(cash),
             as_of=as_of,
             raw=[x for x in data if isinstance(x, dict)],
         )
