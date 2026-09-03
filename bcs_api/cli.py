@@ -34,7 +34,11 @@ from .client import (
     mask_secret,
     to_iso_z,
 )
+<<<<<<< ours
 from .pnl import calculate_pnl
+=======
+from .pnl import calculate_pnl, signed_operation_sum
+>>>>>>> theirs
 from .errors import ApiError, AuthError, BcsError, RateLimitError, UnauthorizedError
 from .export import portfolio_to_rows, save_report, trades_to_rows
 from .formatting import build_table, format_limits, format_portfolio, format_trades, money, qty, short_datetime
@@ -650,20 +654,29 @@ def cmd_operations(args: argparse.Namespace) -> int:
         print_json(data)
         return EXIT_OK
     records = [x for x in (data.get("records") or []) if isinstance(x, dict)]
-    rows = [
-        {
-            "date": _fmt_api_date(x.get("date")),
-            "type": x.get("type"),
-            "status": x.get("status"),
-            "ticker": x.get("ticker"),
-            "isin": x.get("isin"),
-            "issuer": x.get("issuerName"),
-            "sum": x.get("sum"),
-            "currency": x.get("currency"),
-            "balance_change": x.get("balanceChange"),
-        }
-        for x in records
-    ]
+    rows = []
+    for x in records:
+        raw_sum = x.get("sum")
+        try:
+            amt = float(raw_sum) if raw_sum not in (None, "") else None
+        except (TypeError, ValueError):
+            amt = None
+        op_type = str(x.get("type") or "—").strip()
+        balance_change = str(x.get("balanceChange") or x.get("balance_change") or "—").strip()
+        s_amt = signed_operation_sum(amt, balance_change=balance_change, op_type=op_type)
+        rows.append(
+            {
+                "date": _fmt_api_date(x.get("date")),
+                "type": op_type,
+                "status": x.get("status"),
+                "ticker": x.get("ticker"),
+                "isin": x.get("isin"),
+                "issuer": x.get("issuerName"),
+                "sum": s_amt,
+                "currency": x.get("currency"),
+                "balance_change": balance_change,
+            }
+        )
     if args.format == "csv":
         print_csv(rows)
         return EXIT_OK
@@ -672,7 +685,7 @@ def cmd_operations(args: argparse.Namespace) -> int:
         return EXIT_OK
     table_rows = []
     for r in rows:
-        amount = float(r["sum"]) if r["sum"] not in (None, "") else None
+        amount = r["sum"]
         table_rows.append(
             [
                 r["date"],

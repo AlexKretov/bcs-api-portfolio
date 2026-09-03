@@ -255,6 +255,7 @@ def fake_operations_payload(days: int = 90, *, rng: random.Random | None = None)
         ("BondPayingOff", "ОФЗ 26216", "SU26216", "RU000A0JXG57", "RUB", 1, "Positive"),
         ("Commission", "Брокерская комиссия", "", "", "RUB", -1, "Negative"),
         ("Tax", "Налог на дивиденды", "SBER", "RU0009029557", "RUB", -1, "Negative"),
+        ("IncomeTax", "НДФЛ на доход", "", "", "RUB", 1, "Negative"),
         ("PayIn", "Пополнение счёта", "", "", "RUB", 1, "Positive"),
         ("PayOut", "Вывод средств", "", "", "RUB", -1, "Negative"),
         ("BondPayingOff", "ОФЗ 26243", "SU26243", "RU000A0JXT11", "RUB", 1, "Positive"),

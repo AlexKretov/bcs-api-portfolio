@@ -61,6 +61,31 @@ def get_position_category(instrument_type: str) -> str:
     return INSTRUMENT_TO_CATEGORY.get(instrument_type.upper(), "OTHER")
 
 
+<<<<<<< ours
+=======
+def signed_operation_sum(amount: Optional[float], balance_change: str = "", op_type: str = "") -> Optional[float]:
+    """Возвращает сумму операции со знаком (отрицательная для расходов/налогов/комиссий, положительная для доходов)."""
+    if amount is None or amount == 0:
+        return amount
+    bc = balance_change.strip().lower()
+    t = op_type.strip().lower()
+
+    is_expense_type = any(
+        k in t for k in ("tax", "commission", "payout", "withdrawal", "налог", "комиссия", "вывод", "fee")
+    )
+
+    if bc == "negative":
+        return -abs(amount)
+    elif bc == "positive":
+        return abs(amount)
+    elif is_expense_type:
+        return -abs(amount)
+    elif amount < 0:
+        return -abs(amount)
+    return amount
+
+
+>>>>>>> theirs
 def calculate_pnl(
     portfolio: Portfolio,
     trades: Sequence[Trade | dict[str, Any]],
@@ -191,6 +216,10 @@ def calculate_pnl(
         if not isinstance(op, dict):
             continue
         op_type = str(op.get("type") or "").strip()
+<<<<<<< ours
+=======
+        op_type_lower = op_type.lower()
+>>>>>>> theirs
         ticker = str(op.get("ticker") or "").strip().upper()
         amount = op.get("sum")
         try:
@@ -198,7 +227,11 @@ def calculate_pnl(
         except (TypeError, ValueError):
             amount = 0.0
 
+<<<<<<< ours
         if not amount and op_type not in ("PayIn", "PayOut"):
+=======
+        if not amount and op_type not in ("PayIn", "PayOut", "Deposit", "Withdrawal"):
+>>>>>>> theirs
             continue
 
         cat = ticker_to_cat.get(ticker, "OTHER") if ticker else "MONEY"
@@ -209,6 +242,7 @@ def calculate_pnl(
             if allowed_types is not None and pos_itype not in allowed_types:
                 continue
 
+<<<<<<< ours
         if op_type in ("Dividend", "Dividends"):
             dividends_total += abs(amount)
             category_stats[cat]["dividends"] += abs(amount)
@@ -236,6 +270,90 @@ def calculate_pnl(
             elif amount < 0 or balance_change == "negative":
                 other_expenses_total += abs(amount)
                 category_stats[cat]["other_expenses"] += abs(amount)
+=======
+        balance_change = str(op.get("balanceChange") or op.get("balance_change") or "").strip().lower()
+
+        # 1. Дивиденды
+        if (
+            op_type in ("Dividend", "Dividends", "DividendIncome", "ForeignDividend")
+            or "dividend" in op_type_lower
+            or "дивиденд" in op_type_lower
+        ):
+            dividends_total += abs(amount)
+            category_stats[cat]["dividends"] += abs(amount)
+
+        # 2. Купоны и выплаты по облигациям
+        elif (
+            op_type in ("BondPayingOff", "Coupon", "Coupons", "BondYield", "BondCoupon", "Amortization")
+            or "coupon" in op_type_lower
+            or "купон" in op_type_lower
+        ):
+            coupons_total += abs(amount)
+            category_stats[cat]["coupons"] += abs(amount)
+
+        # 3. Налоги
+        elif (
+            op_type in ("Tax", "Taxes", "IncomeTax", "TaxIncome", "DividendTax", "CouponTax", "WithholdingTax", "BrokerTax", "CommissionTax")
+            or "tax" in op_type_lower
+            or "налог" in op_type_lower
+        ):
+            if balance_change == "positive" or op_type in ("TaxRefund", "TaxReturn"):
+                taxes_total = max(0.0, taxes_total - abs(amount))
+                category_stats[cat]["taxes"] = max(0.0, category_stats[cat]["taxes"] - abs(amount))
+            else:
+                taxes_total += abs(amount)
+                category_stats[cat]["taxes"] += abs(amount)
+
+        # 4. Комиссии
+        elif (
+            op_type in ("Commission", "Commissions", "Brokerage commission", "BrokerageCommission", "ExchangeCommission", "DepoCommission", "CustodianCommission")
+            or "commission" in op_type_lower
+            or "комисс" in op_type_lower
+        ):
+            commissions_total += abs(amount)
+            category_stats[cat]["commissions"] += abs(amount)
+
+        # 5. Проценты
+        elif (
+            op_type in ("Interest", "Overnight", "RepoInterest", "DepositInterest")
+            or "interest" in op_type_lower
+            or "процент" in op_type_lower
+        ):
+            other_income_total += abs(amount)
+            category_stats[cat]["other_income"] += abs(amount)
+
+        # 6. Пополнение счёта
+        elif (
+            op_type in ("PayIn", "Deposit", "TopUp", "Refill", "PaymentIn")
+            or "payin" in op_type_lower
+            or "пополнение" in op_type_lower
+        ):
+            pay_in_total += abs(amount)
+
+        # 7. Вывод средств
+        elif (
+            op_type in ("PayOut", "Withdrawal", "PaymentOut")
+            or "payout" in op_type_lower
+            or "вывод" in op_type_lower
+        ):
+            pay_out_total += abs(amount)
+
+        # 8. Прочие неторговые операции — классификация по balance_change
+        else:
+            if balance_change == "positive":
+                other_income_total += abs(amount)
+                category_stats[cat]["other_income"] += abs(amount)
+            elif balance_change == "negative":
+                other_expenses_total += abs(amount)
+                category_stats[cat]["other_expenses"] += abs(amount)
+            else:
+                if amount < 0:
+                    other_expenses_total += abs(amount)
+                    category_stats[cat]["other_expenses"] += abs(amount)
+                else:
+                    other_income_total += abs(amount)
+                    category_stats[cat]["other_income"] += abs(amount)
+>>>>>>> theirs
 
     # ---------------- 4. Итоговые статьи доходов и расходов
     trade_realized_income = max(0.0, realized_trade_pnl)

@@ -205,10 +205,43 @@ class PnlCalculationTests(unittest.TestCase):
         )
         self.assertIsNone(resolve_allowed_types(["ALL"]))
 
+<<<<<<< ours
     def test_get_position_category(self) -> None:
         self.assertEqual(get_position_category("STOCK"), "STOCK")
         self.assertEqual(get_position_category("BONDS"), "BONDS")
         self.assertEqual(get_position_category("FUTURES"), "FUTURES")
+=======
+    def test_income_tax_handling_in_pnl_and_operations(self) -> None:
+        from bcs_api.pnl import signed_operation_sum
+        from bcs_api.web import operations_rows
+
+        # 1. Проверяем правильное формирование знака для IncomeTax в отчёте об операциях
+        income_tax_op = {
+            "date": "2026-02-10T10:00:00Z",
+            "type": "IncomeTax",
+            "sum": 195.0,  # сырое значение из API положительное
+            "balanceChange": "Negative",
+            "currency": "RUB",
+            "status": "Approved",
+        }
+        rows = operations_rows([income_tax_op])
+        self.assertEqual(rows[0]["sum"], -195.0)  # Должно стать отрицательным
+        self.assertEqual(signed_operation_sum(195.0, balance_change="Negative", op_type="IncomeTax"), -195.0)
+
+        # 2. Проверяем, что в отчёте P&L IncomeTax попадает в расходы налоги, а не в прочие доходы
+        report = calculate_pnl(
+            portfolio=Portfolio(positions=[]),
+            trades=[],
+            operations=[income_tax_op],
+        )
+        exp = {item["key"]: item["value"] for item in report["expense_items"]}
+        inc = {item["key"]: item["value"] for item in report["income_items"]}
+
+        self.assertEqual(exp["taxes"], 195.0)  # Должно попасть в налоги
+        self.assertEqual(inc["other_income"], 0.0)  # НЕ должно быть в прочих доходах!
+        self.assertEqual(report["summary"]["total_expenses"], 195.0)
+        self.assertEqual(report["summary"]["total_income"], 0.0)
+>>>>>>> theirs
 
 
 class DemoAndWebPnlTests(unittest.TestCase):

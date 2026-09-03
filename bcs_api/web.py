@@ -46,7 +46,11 @@ from .client import (
     load_config,
     mask_secret,
 )
+<<<<<<< ours
 from .pnl import calculate_pnl
+=======
+from .pnl import calculate_pnl, signed_operation_sum
+>>>>>>> theirs
 from .demo import (
     fake_limits_payload,
     fake_operations,
@@ -516,17 +520,20 @@ def operations_rows(records: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
             amount = float(amount) if amount is not None else None
         except (TypeError, ValueError):
             amount = None
+        op_type = str(x.get("type") or "—").strip()
+        balance_change = str(x.get("balanceChange") or x.get("balance_change") or "—").strip()
+        signed_sum = signed_operation_sum(amount, balance_change=balance_change, op_type=op_type)
         out.append(
             {
                 "date": _fmt_dt(x.get("date")) or str(x.get("date") or "—"),
-                "type": x.get("type") or "—",
+                "type": op_type,
                 "status": x.get("status") or "—",
                 "ticker": x.get("ticker") or "—",
                 "isin": x.get("isin") or "—",
                 "issuer": x.get("issuerName") or "—",
-                "sum": amount,
+                "sum": signed_sum,
                 "currency": x.get("currency") or "—",
-                "balance_change": x.get("balanceChange") or "—",
+                "balance_change": balance_change,
             }
         )
     return out
