@@ -34,6 +34,7 @@ from .client import (
     mask_secret,
     to_iso_z,
 )
+from .pnl import calculate_pnl
 from .errors import ApiError, AuthError, BcsError, RateLimitError, UnauthorizedError
 from .export import portfolio_to_rows, save_report, trades_to_rows
 from .formatting import build_table, format_limits, format_portfolio, format_trades, money, qty, short_datetime
@@ -136,6 +137,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_op.add_argument("--page", type=int, default=0)
     p_op.add_argument("--size", type=int, default=100)
     p_op.set_defaults(func=cmd_operations)
+
+    p_pnl = sub.add_parser("pnl", help="отчёт о прибылях и убытках (P&L) за выбранный период")
+    _add_format_args(p_pnl)
+    _add_range_args(p_pnl)
+    p_pnl.add_argument("--asset-type", dest="asset_types", action="append", help="STOCK, BONDS, FUTURES, FUNDS, MONEY")
+    p_pnl.add_argument("--term", default="T0")
+    p_pnl.set_defaults(func=cmd_pnl)
 
     p_exp = sub.add_parser("export", help="выгрузить портфель и сделки в файлы (JSON/CSV/Markdown)")
     p_exp.add_argument("--out", default="reports", help="папка для отчётов")
@@ -684,6 +692,57 @@ def cmd_operations(args: argparse.Namespace) -> int:
         )
     )
     print(f"\nОпераций показано: {len(rows)}")
+    return EXIT_OK
+
+
+def cmd_pnl(args: argparse.Namespace) -> int:
+    client = make_client(args)
+    since, until = resolve_range(args)
+    term = None if str(args.term).lower() in ("all", "none", "") else args.term
+    asset_types = args.asset_types
+
+    portfolio = client.get_portfolio(term=term)
+    trades = list(client.iter_trades(since=since, until=until))
+    operations = list(client.iter_operations(since=since, until=until))
+
+    pnl_data = calculate_pnl(
+        portfolio=portfolio,
+        trades=trades,
+        operations=operations,
+        asset_types=asset_types,
+        since=since,
+        until=until,
+    )
+
+    if args.raw or args.format == "json":
+        print_json(pnl_data)
+        return EXIT_OK
+
+    print("=" * 68)
+    print(f"Отчёт о прибылях и убытках (P&L) [{pnl_data['filter']['description']}]")
+    if since or until:
+        print(f"Период: {since or '—'} → {until or '—'}")
+    print("=" * 68)
+
+    sum_data = pnl_data["summary"]
+    print(f"Чистая прибыль (Итоговый P&L) : {money(sum_data['net_pnl'], sign=True)}")
+    print(f"  Реализованный фин. результат: {money(sum_data['net_realized_pnl'], sign=True)}")
+    print(f"  Потенциальная прибыль (курс): {money(sum_data['potential_capital_gain'], sign=True)}")
+    print(f"  Всего доходов               : {money(sum_data['total_income'])}")
+    print(f"  Всего расходов              : {money(sum_data['total_expenses'])}")
+
+    print("\nДоходы:")
+    for item in pnl_data["income_items"]:
+        print(f"  {item['label']:50s}: {money(item['value'])}")
+
+    print("\nПотенциальная прибыль от прироста стоимости:")
+    for item in pnl_data["potential_items"]:
+        print(f"  {item['label']:50s}: {money(item['value'], sign=True)}")
+
+    print("\nРасходы:")
+    for item in pnl_data["expense_items"]:
+        print(f"  {item['label']:50s}: {money(item['value'])}")
+
     return EXIT_OK
 
 

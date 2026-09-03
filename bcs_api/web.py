@@ -46,6 +46,7 @@ from .client import (
     load_config,
     mask_secret,
 )
+from .pnl import calculate_pnl
 from .demo import (
     fake_limits_payload,
     fake_operations,
@@ -239,6 +240,7 @@ def portfolio_payload(portfolio: Portfolio, *, source: str) -> dict[str, Any]:
     positions = sorted(portfolio.positions, key=lambda p: -p.current_value_rub)
     cash = sorted(portfolio.cash, key=lambda c: -c.current_value_rub)
     by_type = portfolio.by_type()
+    by_type_grouped = portfolio.positions_by_type()
     total = portfolio.securities_value_rub or 1.0
     return {
         "ok": True,
@@ -286,6 +288,41 @@ def portfolio_payload(portfolio: Portfolio, *, source: str) -> dict[str, Any]:
             }
             for p in positions
         ],
+        "positions_by_type": [
+            {
+                "class": group["class"],
+                "value_rub": group["value_rub"],
+                "unrealized_pl": group["unrealized_pl"],
+                "daily_pl": group["daily_pl"],
+                "share": group["share"],
+                "count": group["count"],
+                "positions": [
+                    {
+                        "ticker": p.ticker,
+                        "name": p.display_name or p.ticker,
+                        "type": p.type_label,
+                        "currency": p.currency,
+                        "board": p.board,
+                        "term": p.term,
+                        "quantity": p.quantity,
+                        "lots": p.lots,
+                        "locked": p.locked,
+                        "balance_price": p.balance_price,
+                        "current_price": p.current_price,
+                        "current_value_rub": round(p.current_value_rub, 2),
+                        "unrealized_pl": round(p.unrealized_pl, 2),
+                        "unrealized_percent_pl": round(p.unrealized_percent_pl, 2),
+                        "daily_pl": round(p.daily_pl, 2),
+                        "daily_percent_pl": round(p.daily_percent_pl, 2),
+                        "portfolio_share": round(p.portfolio_share, 4),
+                        "accrued_income": round(p.accrued_income, 2),
+                        "is_blocked": p.is_blocked,
+                    }
+                    for p in group["positions"]
+                ],
+            }
+            for group in by_type_grouped
+        ],
         "by_type": [
             {"name": name, "value": round(value, 2), "share": round(value / total * 100, 2)}
             for name, value in by_type.items()
@@ -296,9 +333,30 @@ def portfolio_payload(portfolio: Portfolio, *, source: str) -> dict[str, Any]:
     }
 
 
+def deduplicate_money_limits(money_limits: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen: dict[str, dict[str, Any]] = {}
+    for m in money_limits:
+        if not isinstance(m, dict):
+            continue
+        curr = str(m.get("currencyCode") or "—").strip().upper()
+        if curr not in seen:
+            seen[curr] = dict(m)
+        else:
+            existing = seen[curr]
+            ex_qty = _qty_num(existing.get("quantity")) or 0.0
+            new_qty = _qty_num(m.get("quantity")) or 0.0
+            if ex_qty == new_qty and _num_any(existing.get("locked")) == _num_any(m.get("locked")):
+                pass
+            else:
+                existing_q = existing.get("quantity") if isinstance(existing.get("quantity"), dict) else {}
+                existing["quantity"] = {"type": existing_q.get("type"), "value": ex_qty + new_qty}
+                existing["locked"] = (_num_any(existing.get("locked")) or 0.0) + (_num_any(m.get("locked")) or 0.0)
+    return list(seen.values())
+
+
 def limits_payload(limits: dict[str, Any], *, source: str) -> dict[str, Any]:
     depo = limits.get("depoLimit") or []
-    money_limits = limits.get("moneyLimits") or []
+    money_limits = deduplicate_money_limits(limits.get("moneyLimits") or [])
     futures = limits.get("futuresLimits") or []
     holdings = limits.get("futureHolding") or []
 
@@ -611,6 +669,36 @@ def cmd_operations(app: WebApp, body: dict[str, Any]) -> dict[str, Any]:
         source = "live"
     rows = operations_rows(records)
     return {"ok": True, "mode": source, "total": len(rows), "operations": rows}
+
+
+def cmd_pnl(app: WebApp, body: dict[str, Any]) -> dict[str, Any]:
+    since, until = _resolve_range(body)
+    asset_types = _split(body.get("asset_types")) or _split(body.get("types"))
+    term_value = str(body.get("term") or "T0")
+    term = None if term_value.lower() in ("all", "none", "") else term_value
+
+    if app.settings.mode == "demo":
+        portfolio = fake_portfolio()
+        trades = fake_trades(days=_days(body))
+        operations = fake_operations(days=_days(body))
+        source = "demo"
+    else:
+        client = app.make_client()
+        portfolio = client.get_portfolio(term=term)
+        trades = list(client.iter_trades(since=since, until=until))
+        operations = list(client.iter_operations(since=since, until=until))
+        source = "live"
+
+    pnl_data = calculate_pnl(
+        portfolio=portfolio,
+        trades=trades,
+        operations=operations,
+        asset_types=asset_types,
+        since=since,
+        until=until,
+    )
+    pnl_data["mode"] = source
+    return pnl_data
 
 
 def cmd_status(app: WebApp, body: dict[str, Any]) -> dict[str, Any]:
@@ -1079,6 +1167,7 @@ class _Handler(BaseHTTPRequestHandler):
             "/api/trades": lambda b: cmd_trades(self.app, b),
             "/api/orders": lambda b: cmd_orders(self.app, b),
             "/api/operations": lambda b: cmd_operations(self.app, b),
+            "/api/pnl": lambda b: cmd_pnl(self.app, b),
             "/api/export": lambda b: cmd_export(self.app, b),
             "/api/raw": lambda b: cmd_raw(self.app, b),
         }

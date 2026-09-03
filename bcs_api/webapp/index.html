@@ -208,6 +208,14 @@ dialog pre{white-space:pre-wrap;word-break:break-word;font-size:12px;padding:14p
         <label>С даты <input type="date" id="in-since" title="перекрывает кнопки периода"></label>
         <label>По дату <input type="date" id="in-until"></label>
       </div>
+      <label>Типы активов (для P&L отчёта)</label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px" id="asset-type-checks">
+        <label style="display:inline-flex;align-items:center;margin:0;font-size:12px"><input type="checkbox" value="STOCK" checked> Акции</label>
+        <label style="display:inline-flex;align-items:center;margin:0;font-size:12px"><input type="checkbox" value="BONDS" checked> Облигации</label>
+        <label style="display:inline-flex;align-items:center;margin:0;font-size:12px"><input type="checkbox" value="FUTURES" checked> Фьючерсы</label>
+        <label style="display:inline-flex;align-items:center;margin:0;font-size:12px"><input type="checkbox" value="FUNDS" checked> ПИФ/ETF</label>
+        <label style="display:inline-flex;align-items:center;margin:0;font-size:12px"><input type="checkbox" value="MONEY" checked> Валюта/ДС</label>
+      </div>
       <label>Тикеры (через запятую) <input id="in-tickers" placeholder="SBER, LKOH"></label>
       <label>Классы (через запятую) <input id="in-class-codes" placeholder="TQBR"></label>
       <div class="row2">
@@ -223,6 +231,7 @@ dialog pre{white-space:pre-wrap;word-break:break-word;font-size:12px;padding:14p
     <section class="panel">
       <h2>Данные</h2>
       <button class="big" id="btn-portfolio"><span class="ico">📊</span> Портфель</button>
+      <button class="big" id="btn-pnl" style="border-color:var(--accent)"><span class="ico">📈</span> Отчёт P&L</button>
       <button class="big" id="btn-limits"><span class="ico">🏦</span> Лимиты</button>
       <button class="big" id="btn-trades"><span class="ico">🔁</span> Сделки</button>
       <button class="big" id="btn-orders"><span class="ico">📋</span> Заявки</button>
@@ -301,7 +310,7 @@ const APP = {
   watchCount: 0,
   log: [],
   palette: ["#4ba3ff","#a78bfa","#3ecf8e","#f5b04c","#ff6b6b","#5ec8d8","#e879f9","#9ee37d","#f0a0d0","#7dd3fc"],
-  sectionTitles: {portfolio:"Портфель", limits:"Лимиты", trades:"Сделки", orders:"Заявки", operations:"Операции", token:"Диагностика токена", export:"Экспорт"}
+  sectionTitles: {portfolio:"Портфель", pnl:"Отчёт о прибылях и убытках (P&L)", limits:"Лимиты", trades:"Сделки", orders:"Заявки", operations:"Операции", token:"Диагностика токена", export:"Экспорт"}
 };
 
 /* =============================== UTILS =============================== */
@@ -636,7 +645,29 @@ function renderPortfolio(data, opts) {
 
   let positions = "";
   if (data.positions && data.positions.length) {
-    const rows = data.positions.map(p => [
+    let groupHtml = "";
+    if (data.positions_by_type && data.positions_by_type.length) {
+      groupHtml = data.positions_by_type.map(g => {
+        const rows = g.positions.map(p => [
+          {html: esc(p.ticker) + (p.is_blocked ? ' <span class="locked" title="актив заблокирован">🔒</span>' : "")},
+          {text: p.name, cls: "muted"},
+          {text: fmtQty(p.quantity)},
+          {text: fmtMoney(p.balance_price, "")},
+          {text: fmtMoney(p.current_price, "")},
+          {text: fmtMoneyPlain(p.current_value_rub)},
+          {text: fmtMoneySigned(p.unrealized_pl), cls: signClass(p.unrealized_pl)},
+          {text: fmtPct(p.unrealized_percent_pl), cls: signClass(p.unrealized_percent_pl)},
+          {text: fmtPct(p.daily_percent_pl), cls: signClass(p.daily_percent_pl)},
+          {text: fmtPct(p.portfolio_share)},
+          {text: p.type}
+        ]);
+        const t = table(["Тикер","Название","Кол-во","Цена поз.","Цена тек.","Стоимость ₽","P/L","P/L %","За день %","Доля","Тип"],
+          rows, ["","","num","num","num","num","num","num","num","num",""]);
+        return detailsHtml(g.class + " (" + g.count + ") — " + fmtMoneyPlain(g.value_rub) + " · P/L: " + fmtMoneySigned(g.unrealized_pl) + " (" + fmtPct(g.share) + " портфеля)", true, t.outerHTML);
+      }).join("");
+    }
+
+    const flatRows = data.positions.map(p => [
       {html: esc(p.ticker) + (p.is_blocked ? ' <span class="locked" title="актив заблокирован">🔒</span>' : "")},
       {text: p.name, cls: "muted"},
       {text: fmtQty(p.quantity)},
@@ -649,9 +680,10 @@ function renderPortfolio(data, opts) {
       {text: fmtPct(p.portfolio_share)},
       {text: p.type}
     ]);
-    const t = table(["Тикер","Название","Кол-во","Цена поз.","Цена тек.","Стоимость ₽","P/L","P/L %","За день %","Доля","Тип"],
-      rows, ["","","num","num","num","num","num","num","num","num",""]);
-    positions = detailsHtml("Позиции (" + data.positions.length + ")", true, t.outerHTML);
+    const flatTable = table(["Тикер","Название","Кол-во","Цена поз.","Цена тек.","Стоимость ₽","P/L","P/L %","За день %","Доля","Тип"],
+      flatRows, ["","","num","num","num","num","num","num","num","num",""]);
+
+    positions = detailsHtml("Группировка активов по классам (" + data.positions.length + " поз.)", true, groupHtml || flatTable.outerHTML);
   } else {
     positions = detailsHtml("Позиции", true, '<div class="empty">Позиций нет (или все остатки нулевые)</div>');
   }
@@ -693,6 +725,141 @@ function watchChartHtml(history) {
     '<div class="legend"><span>стоимость портфеля: <b>' + fmtMoneyPlain(last) + "</b></span>" +
     "<span>мин: <b>" + fmtMoneyPlain(min) + "</b></span><span>макс: <b>" + fmtMoneyPlain(max) + "</b></span>" +
     "<span>замеров: <b>" + history.length + "</b></span></div></div>";
+}
+
+/* =============================== PNL REPORT =============================== */
+
+function selectedAssetTypes() {
+  const checks = $$("#asset-type-checks input[type=checkbox]:checked");
+  return checks.map(c => c.value);
+}
+
+async function doPnl() {
+  const types = selectedAssetTypes();
+  const body = filterBody({ asset_types: types.join(",") });
+  const data = await api("/api/pnl", body);
+  if (!data.ok) { showError("pnl", data); return null; }
+  APP.results.pnl = data;
+  renderPnl(data);
+  return data;
+}
+
+function renderPnl(data) {
+  const body = sectionBody("pnl");
+  const s = data.summary;
+
+  const kpi = (label, value, cls, big) =>
+    '<div class="kpi' + (big ? " total" : "") + '"><div class="k-label">' + esc(label) + '</div><div class="k-value ' + (cls || "") + '">' + value + "</div></div>";
+
+  const kpis =
+    '<div class="kpis">' +
+    kpi("Чистая прибыль (Итого P&L)", fmtMoneySigned(s.net_pnl), signClass(s.net_pnl), true) +
+    kpi("Реализованный результат", fmtMoneySigned(s.net_realized_pnl), signClass(s.net_realized_pnl)) +
+    kpi("Потенциальный прирост стоимости", fmtMoneySigned(s.potential_capital_gain), signClass(s.potential_capital_gain)) +
+    kpi("Всего доходов", fmtMoneyPlain(s.total_income), "pos") +
+    kpi("Всего расходов", fmtMoneyPlain(s.total_expenses), "neg") +
+    "</div>";
+
+  let html = kpis;
+  html += '<div class="note">Фильтр по типам активов: <b>' + esc(data.filter.description) + '</b></div>';
+
+  if (data.income_items && data.income_items.length) {
+    const rows = data.income_items.map(i => [
+      {text: i.label},
+      {text: fmtMoneyPlain(i.value), cls: "pos"}
+    ]);
+    html += detailsHtml("Основные статьи доходов", true, table(["Статья дохода", "Сумма ₽"], rows, ["", "num"]).outerHTML);
+  }
+
+  if (data.potential_items && data.potential_items.length) {
+    const rows = data.potential_items.map(i => [
+      {text: i.label},
+      {text: fmtMoneySigned(i.value), cls: signClass(i.value)}
+    ]);
+    html += detailsHtml("Потенциальная прибыль от прироста курсовой стоимости активов", true, table(["Статья переоценки", "Сумма ₽"], rows, ["", "num"]).outerHTML);
+  }
+
+  if (data.expense_items && data.expense_items.length) {
+    const rows = data.expense_items.map(i => [
+      {text: i.label},
+      {text: fmtMoneyPlain(i.value), cls: "neg"}
+    ]);
+    html += detailsHtml("Основные статьи расходов", true, table(["Статья расхода", "Сумма ₽"], rows, ["", "num"]).outerHTML);
+  }
+
+  if (data.by_category && data.by_category.length) {
+    const rows = data.by_category.map(c => [
+      {text: c.name},
+      {text: fmtMoneyPlain(c.securities_value)},
+      {text: fmtMoneySigned(c.realized_pnl), cls: signClass(c.realized_pnl)},
+      {text: fmtMoneyPlain(c.dividends + c.coupons)},
+      {text: fmtMoneySigned(c.unrealized_pl), cls: signClass(c.unrealized_pl)},
+      {text: fmtMoneyPlain(c.commissions + c.taxes)},
+      {text: fmtMoneySigned(c.total_pnl), cls: signClass(c.total_pnl)}
+    ]);
+    html += detailsHtml("Результат по классам активов", true,
+      table(["Класс активов", "Стоимость", "Реализ. P/L", "Див. и купоны", "Курсовая переоценка", "Комиссии и налоги", "Итого P/L"],
+        rows, ["","num","num","num","num","num","num"]).outerHTML);
+  }
+
+  if (data.cash_flow) {
+    const cf = data.cash_flow;
+    const rows = [
+      [{text: "Пополнение счёта"}, {text: fmtMoneyPlain(cf.pay_in), cls: "pos"}],
+      [{text: "Вывод средств"}, {text: fmtMoneyPlain(cf.pay_out), cls: "neg"}],
+      [{text: "Чистый приток / отток"}, {text: fmtMoneySigned(cf.net_flow), cls: signClass(cf.net_flow)}]
+    ];
+    html += detailsHtml("Справочно: Движение денежных средств", false, table(["Операция", "Сумма ₽"], rows, ["", "num"]).outerHTML);
+  }
+
+  body.innerHTML = html + '<p class="foot">' + (data.mode === "demo" ? "демо-данные" : "боевой API") + "</p>";
+
+  sectionActions("pnl", [
+    {label:"JSON", fn: () => dlJson("pnl", data)},
+    {label:"CSV", fn: () => dlCsvPnl(data)},
+    {label:"Markdown", fn: () => dlMdPnl(data)},
+    {label:"Сырой JSON", fn: () => openRaw("operations", filterBody())}
+  ]);
+  ensureSection("pnl").scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+function dlCsvPnl(data) {
+  const rows = [];
+  rows.push(["Чистая прибыль (Итоговый P&L)", data.summary.net_pnl]);
+  rows.push(["Реализованный результат", data.summary.net_realized_pnl]);
+  rows.push(["Потенциальная прибыль (курсовая)", data.summary.potential_capital_gain]);
+  rows.push(["Всего доходов", data.summary.total_income]);
+  rows.push(["Всего расходов", data.summary.total_expenses]);
+  rows.push([]);
+  rows.push(["Статьи доходов"]);
+  (data.income_items || []).forEach(i => rows.push([i.label, i.value]));
+  rows.push([]);
+  rows.push(["Потенциальный прирост стоимости"]);
+  (data.potential_items || []).forEach(i => rows.push([i.label, i.value]));
+  rows.push([]);
+  rows.push(["Статьи расходов"]);
+  (data.expense_items || []).forEach(i => rows.push([i.label, i.value]));
+
+  downloadFile("bcs-pnl-"+stamp()+".csv", blobCsv(["Показатель / Статья", "Сумма ₽"], rows), "text/csv;charset=utf-8");
+}
+
+function dlMdPnl(data) {
+  const s = data.summary;
+  let md = "# Отчёт о прибылях и убытках (P&L)\n\n" +
+    "- Фильтр: " + data.filter.description + "\n" +
+    "- **Чистая прибыль (Итоговый P&L)**: " + fmtMoneySigned(s.net_pnl) + "\n" +
+    "- **Реализованный финансовый результат**: " + fmtMoneySigned(s.net_realized_pnl) + "\n" +
+    "- **Потенциальная прибыль от прироста стоимости**: " + fmtMoneySigned(s.potential_capital_gain) + "\n" +
+    "- Всего доходов: " + fmtMoneyPlain(s.total_income) + "\n" +
+    "- Всего расходов: " + fmtMoneyPlain(s.total_expenses) + "\n\n" +
+    "## Доходы\n\n" +
+    mdTable(["Статья", "Сумма ₽"], (data.income_items || []).map(i => [i.label, fmtMoneyPlain(i.value)])) + "\n\n" +
+    "## Потенциальная прибыль от прироста курсовой стоимости\n\n" +
+    mdTable(["Статья", "Сумма ₽"], (data.potential_items || []).map(i => [i.label, fmtMoneySigned(i.value)])) + "\n\n" +
+    "## Расходы\n\n" +
+    mdTable(["Статья", "Сумма ₽"], (data.expense_items || []).map(i => [i.label, fmtMoneyPlain(i.value)])) + "\n";
+
+  downloadFile("bcs-pnl-"+stamp()+".md", md, "text/markdown;charset=utf-8");
 }
 
 /* =============================== LIMITS =============================== */
@@ -1080,6 +1247,7 @@ async function doFullReport() {
   hideSectionCards();
   try {
     await doPortfolio();
+    await doPnl();
     await doLimits();
     await doTrades();
     toast("Полный отчёт собран");
@@ -1135,6 +1303,7 @@ function bindControls() {
   };
 
   $("#btn-portfolio").onclick = () => runGuard("Портфель", doPortfolio);
+  $("#btn-pnl").onclick = () => runGuard("Отчёт P&L", doPnl);
   $("#btn-limits").onclick = () => runGuard("Лимиты", doLimits);
   $("#btn-trades").onclick = () => runGuard("Сделки", doTrades);
   $("#btn-orders").onclick = () => runGuard("Заявки", doOrders);
