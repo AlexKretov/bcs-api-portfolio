@@ -34,11 +34,9 @@ from .client import (
     mask_secret,
     to_iso_z,
 )
-<<<<<<< ours
-from .pnl import calculate_pnl
-=======
+
 from .pnl import calculate_pnl, signed_operation_sum
->>>>>>> theirs
+
 from .errors import ApiError, AuthError, BcsError, RateLimitError, UnauthorizedError
 from .export import portfolio_to_rows, save_report, trades_to_rows
 from .formatting import build_table, format_limits, format_portfolio, format_trades, money, qty, short_datetime
