@@ -216,10 +216,7 @@ def calculate_pnl(
         if not isinstance(op, dict):
             continue
         op_type = str(op.get("type") or "").strip()
-<<<<<<< ours
-=======
         op_type_lower = op_type.lower()
->>>>>>> theirs
         ticker = str(op.get("ticker") or "").strip().upper()
         amount = op.get("sum")
         try:
@@ -227,11 +224,7 @@ def calculate_pnl(
         except (TypeError, ValueError):
             amount = 0.0
 
-<<<<<<< ours
-        if not amount and op_type not in ("PayIn", "PayOut"):
-=======
         if not amount and op_type not in ("PayIn", "PayOut", "Deposit", "Withdrawal"):
->>>>>>> theirs
             continue
 
         cat = ticker_to_cat.get(ticker, "OTHER") if ticker else "MONEY"
@@ -242,35 +235,6 @@ def calculate_pnl(
             if allowed_types is not None and pos_itype not in allowed_types:
                 continue
 
-<<<<<<< ours
-        if op_type in ("Dividend", "Dividends"):
-            dividends_total += abs(amount)
-            category_stats[cat]["dividends"] += abs(amount)
-        elif op_type in ("BondPayingOff", "Coupon", "Coupons", "BondYield"):
-            coupons_total += abs(amount)
-            category_stats[cat]["coupons"] += abs(amount)
-        elif op_type in ("Interest", "Overnight"):
-            other_income_total += abs(amount)
-            category_stats[cat]["other_income"] += abs(amount)
-        elif op_type in ("Commission", "Brokerage commission", "BrokerageCommission"):
-            commissions_total += abs(amount)
-            category_stats[cat]["commissions"] += abs(amount)
-        elif op_type in ("Tax", "Taxes"):
-            taxes_total += abs(amount)
-            category_stats[cat]["taxes"] += abs(amount)
-        elif op_type in ("PayIn", "Deposit", "TopUp", "Refill", "PaymentIn"):
-            pay_in_total += abs(amount)
-        elif op_type in ("PayOut", "Withdrawal", "PaymentOut"):
-            pay_out_total += abs(amount)
-        else:
-            balance_change = str(op.get("balanceChange") or "").strip().lower()
-            if amount > 0 or balance_change == "positive":
-                other_income_total += abs(amount)
-                category_stats[cat]["other_income"] += abs(amount)
-            elif amount < 0 or balance_change == "negative":
-                other_expenses_total += abs(amount)
-                category_stats[cat]["other_expenses"] += abs(amount)
-=======
         balance_change = str(op.get("balanceChange") or op.get("balance_change") or "").strip().lower()
 
         # 1. Дивиденды
@@ -353,7 +317,6 @@ def calculate_pnl(
                 else:
                     other_income_total += abs(amount)
                     category_stats[cat]["other_income"] += abs(amount)
->>>>>>> theirs
 
     # ---------------- 4. Итоговые статьи доходов и расходов
     trade_realized_income = max(0.0, realized_trade_pnl)
