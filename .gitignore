@@ -1,0 +1,16 @@
+# секреты и кэш токенов — никогда в git
+.bcs-tokens.json
+bcs-config.json
+*.bcs-tokens.json
+reports/
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+dist/
+build/
+*.egg-info/
+
+.pytest_cache/
+.ruff_cache/

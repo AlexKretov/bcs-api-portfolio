@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bcs-api-portfolio"
+version = "1.0.0"
+description = "Клиент БКС Торгового API: портфель, лимиты, история сделок и заявок"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = ["requests>=2.28,<3"]
+
+[project.scripts]
+bcs-portfolio = "bcs_api.cli:main"
+
+[tool.setuptools]
+packages = ["bcs_api"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 120
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF", "TRY", "DTZ", "PLE", "PLW"]
+# Осознанные отступления:
+#   UP045                 — Optional[] вместо "| None" (читается одинаково на 3.9+);
+#   RUF001/RUF002/RUF003  — «похожие на латиницу» символы ложно срабатывают на кириллице;
+#   DTZ005/DTZ007         — время displayed-локальное намеренно;
+#   TRY003/TRY004/SIM10x  — косметика, не влияющая на поведение.
+ignore = [
+    "UP045",
+    "RUF001",
+    "RUF002",
+    "RUF003",
+    "DTZ005",
+    "DTZ007",
+    "TRY003",
+    "TRY004",
+    "SIM105",
+    "SIM117",
+    "RUF012",
+    "PYI034",
+    "PYI036",
+    "BLE001",
+    "PLW1510",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# sys.path подправляется до импорта пакета — иначе тесты и мок нельзя запустить скриптом
+"tests/*" = ["E402"]
