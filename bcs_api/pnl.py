@@ -61,8 +61,6 @@ def get_position_category(instrument_type: str) -> str:
     return INSTRUMENT_TO_CATEGORY.get(instrument_type.upper(), "OTHER")
 
 
-<<<<<<< ours
-=======
 def signed_operation_sum(amount: Optional[float], balance_change: str = "", op_type: str = "") -> Optional[float]:
     """Возвращает сумму операции со знаком (отрицательная для расходов/налогов/комиссий, положительная для доходов)."""
     if amount is None or amount == 0:
@@ -85,7 +83,6 @@ def signed_operation_sum(amount: Optional[float], balance_change: str = "", op_t
     return amount
 
 
->>>>>>> theirs
 def calculate_pnl(
     portfolio: Portfolio,
     trades: Sequence[Trade | dict[str, Any]],
