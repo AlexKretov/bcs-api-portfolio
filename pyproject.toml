@@ -12,9 +12,13 @@ dependencies = ["requests>=2.28,<3"]
 
 [project.scripts]
 bcs-portfolio = "bcs_api.cli:main"
+bcs-portfolio-web = "bcs_api.web:main"
 
 [tool.setuptools]
 packages = ["bcs_api"]
+
+[tool.setuptools.package-data]
+bcs_api = ["webapp/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
